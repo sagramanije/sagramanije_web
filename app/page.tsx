@@ -8,6 +8,7 @@ import SiteFooter from "./components/site-footer";
 import SiteNav from "./components/site-nav";
 import StoreBadges from "./components/store-badges";
 import { EMAIL } from "./data";
+import { Analytics } from "@vercel/analytics/next"
 
 const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
   "Segnalazione sagra",
@@ -16,6 +17,7 @@ const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
 export default function Home() {
   return (
     <>
+      <Analytics />
       <SiteNav />
 
       <main id="top" className="flex-1">
