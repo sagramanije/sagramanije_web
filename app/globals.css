@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Palette presa 1:1 da sagramanije/src/constants/theme.ts */
+@theme {
+  --color-primary: #ec5a35;
+  --color-primary-ink: #b8431f; /* variante scura: l'arancione non passa AA sul bianco a testo piccolo */
+  --color-cream: #fff7ee;
+  --color-ink: #000000;
+  --color-muted: #60646c;
+  --color-warm: #8a7a6c;
+  --color-beige: #f0e3d3;
+  --color-surface: #ffffff;
+  --color-green: #3f9d6b;
+  --color-blue: #3c87f7;
+  --color-blue-ink: #2a5fc4; /* stessa ragione: il blu dell'app non passa AA sul crema */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jakarta);
+  --font-title: var(--font-bricolage);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
