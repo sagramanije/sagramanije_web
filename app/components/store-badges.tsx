@@ -49,9 +49,9 @@ function Badge({
 export default function StoreBadges({ className = "" }: { className?: string }) {
   return (
     <div className={`flex flex-wrap gap-3 ${className}`}>
-      <Badge href={APP_STORE_URL} eyebrow="Scarica su" name="App Store">
+      {/* <Badge href={APP_STORE_URL} eyebrow="Scarica su" name="App Store">
         <AppleGlyph />
-      </Badge>
+      </Badge> */}
       <Badge href={PLAY_STORE_URL} eyebrow="Disponibile su" name="Google Play">
         <PlayGlyph />
       </Badge>
