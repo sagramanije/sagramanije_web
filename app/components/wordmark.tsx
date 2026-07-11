@@ -3,7 +3,7 @@
 export function LogoMark({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" aria-hidden className={className}>
-      <rect x="0" y="0" width="512" height="512" rx="112" fill="#C1583D" />
+      <rect x="0" y="0" width="512" height="512" rx="112" fill="#ec5a35" />
       <path
         d="M185,158 L327,158 L382,263 L350.5,295 L319,263 L287.5,295 L256,263 L224.5,295 L193,263 L161.5,295 L130,263 Z"
         fill="#FBF6EF"
