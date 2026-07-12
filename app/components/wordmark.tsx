@@ -1,16 +1,22 @@
-// Il marchio: tendone da sagra su fondo terracotta.
-// Stesso disegno di app/icon.svg (la favicon) e public/logo.svg.
+import Image from "next/image";
+
+// Il marchio: pin con arrosticino, bianco su arancione.
+// pin-mark.png è solo la sagoma bianca (fondo trasparente): il colore arriva
+// da bg-primary, così resta agganciato al token del tema.
 export function LogoMark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 512 512" aria-hidden className={className}>
-      <rect x="0" y="0" width="512" height="512" rx="112" fill="#ec5a35" />
-      <path
-        d="M185,158 L327,158 L382,263 L350.5,295 L319,263 L287.5,295 L256,263 L224.5,295 L193,263 L161.5,295 L130,263 Z"
-        fill="#FBF6EF"
+    <span
+      className={`flex items-center justify-center overflow-hidden rounded-[22%] bg-primary ${className}`}
+    >
+      <Image
+        src="/pin-mark.png"
+        alt=""
+        width={363}
+        height={540}
+        className="h-[64%] w-auto"
+        priority
       />
-      <rect x="148" y="300" width="16" height="55" rx="3" fill="#FBF6EF" />
-      <rect x="348" y="300" width="16" height="55" rx="3" fill="#FBF6EF" />
-    </svg>
+    </span>
   );
 }
 
@@ -30,7 +36,7 @@ export function PinMark({ className = "" }: { className?: string }) {
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`flex items-center gap-2.5 ${className}`}>
-      <LogoMark className="h-8 w-8 rounded-[0.45rem]" />
+      <LogoMark className="h-8 w-8" />
       <span className="font-title text-xl tracking-tight">Sagramanije</span>
     </span>
   );
