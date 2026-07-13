@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EMAIL } from "../data";
 import { Wordmark } from "./wordmark";
 
@@ -11,6 +12,9 @@ export default function SiteFooter() {
             {EMAIL}
           </a>
           <p>Sagre e feste di paese dell&apos;Abruzzo.</p>
+          <Link href="/privacy" className="font-semibold hover:text-ink">
+            Privacy Policy
+          </Link>
         </div>
       </div>
     </footer>

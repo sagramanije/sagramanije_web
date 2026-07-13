@@ -49,6 +49,11 @@ export const SAGRA_DETTAGLIO: SagraDemo = {
 
 export const EMAIL = "sagramanije@gmail.com";
 
+// Contitolari del trattamento (art. 26 GDPR): dietro l'app ci sono due persone
+// fisiche, quindi l'informativa deve nominarle entrambe, non solo il marchio.
+export const PRIVACY_OWNER = "Andrea Damiani/Matteo Di Blasio";
+export const PRIVACY_UPDATED = "13 luglio 2026";
+
 // Da riempire quando gli store danno i link definitivi.
 export const APP_STORE_URL = "#";
 export const PLAY_STORE_URL = "#";
