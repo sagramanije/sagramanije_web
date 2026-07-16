@@ -8,7 +8,11 @@ import SiteFooter from "./components/site-footer";
 import SiteNav from "./components/site-nav";
 import StoreBadges from "./components/store-badges";
 import { EMAIL } from "./data";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
+import ProssimeSagre from "./components/prossime-sagre";
+
+// La sezione "prossime sagre" legge l'API: rigenera la home ogni 6 ore.
+export const revalidate = 21_600;
 
 const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
   "Segnalazione sagra",
@@ -78,6 +82,9 @@ export default function Home() {
             />
           </div>
         </section>
+
+        {/* Prossime sagre (dati veri dall'API) */}
+        <ProssimeSagre />
 
         {/* Schermate */}
         <section id="schermate" className="py-16">

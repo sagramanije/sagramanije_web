@@ -1,5 +1,8 @@
-import { APP_STORE_URL, PLAY_STORE_URL } from "../data";
+import { PLAY_STORE_URL } from "../data";
 
+// Tenuto per quando l'app esce su App Store: riattivare il Badge commentato
+// sotto e reimportare APP_STORE_URL da ../data.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AppleGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0 fill-current" aria-hidden>
