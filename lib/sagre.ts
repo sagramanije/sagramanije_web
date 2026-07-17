@@ -234,6 +234,7 @@ export function locandinaOriginale(s: Pick<Sagra, "locandina">): string | null {
 // --- JSON-LD (schema.org/Event) ---
 
 export function eventJsonLd(s: Sagra, url: string) {
+  const immagine = locandinaOriginale(s);
   return {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -252,6 +253,17 @@ export function eventJsonLd(s: Sagra, url: string) {
         addressCountry: "IT",
       },
       geo: { "@type": "GeoCoordinates", latitude: s.lat, longitude: s.leng },
+    },
+    // Solo dati reali: la locandina quando c'è ed è di fonte affidabile.
+    ...(immagine && { image: [immagine] }),
+    // Le sagre hanno ingresso libero: offerta gratuita, dato veritiero.
+    offers: {
+      "@type": "Offer",
+      price: 0,
+      priceCurrency: "EUR",
+      availability: "https://schema.org/InStock",
+      url,
+      ...(s.data_inizio && { validFrom: toISO(s.data_inizio) }),
     },
     description: riassunto(s),
     url,
