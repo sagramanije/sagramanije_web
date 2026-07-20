@@ -24,36 +24,45 @@ jobs:
           curl --fail --silent --show-error --max-time 60 \
             https://sagramanije.it/api/archivio \
             -o /tmp/archivio.json
-          # Se la risposta non è JSON valido o non ha sagre, meglio fallire
-          # che committare un archivio vuoto sopra quello buono.
-          python3 -c "
-          import json, sys
-          d = json.load(open('/tmp/archivio.json'))
-          if not isinstance(d.get('sagre'), list) or len(d['sagre']) == 0:
-              sys.exit('archivio vuoto o malformato: non committo')
-          print(f\"ok, {len(d['sagre'])} sagre\")
-          "
 
-      - name: Rifiuta un archivio che perde sagre
+      - name: Aggiorna il file solo se le sagre sono cambiate
+        id: confronto
         run: |
-          # L'archivio può solo crescere. Se il file nuovo ne ha meno del
-          # vecchio significa che qualcosa è andato storto a monte.
-          python3 -c "
+          python3 <<'PY' >> "$GITHUB_OUTPUT"
           import json, sys
-          vecchio = json.load(open('data/archivio-sagre.json'))['sagre']
-          nuovo = json.load(open('/tmp/archivio.json'))['sagre']
-          if len(nuovo) < len(vecchio):
-              sys.exit(f'archivio in calo: {len(vecchio)} -> {len(nuovo)}, non committo')
-          print(f'{len(vecchio)} -> {len(nuovo)}')
-          "
-          cp /tmp/archivio.json data/archivio-sagre.json
 
-      - name: Committa se è cambiato qualcosa
+          nuovo = json.load(open("/tmp/archivio.json"))
+          if not isinstance(nuovo.get("sagre"), list) or not nuovo["sagre"]:
+              sys.exit("archivio vuoto o malformato: non tocco niente")
+
+          vecchio = json.load(open("data/archivio-sagre.json"))
+
+          # L'archivio può solo crescere: se cala, a monte è andato storto
+          # qualcosa e non voglio sovrascrivere quello buono.
+          if len(nuovo["sagre"]) < len(vecchio["sagre"]):
+              sys.exit(f"archivio in calo: {len(vecchio['sagre'])} -> {len(nuovo['sagre'])}")
+
+          # Confronto per id, ignorando l'ordine e soprattutto il campo
+          # "aggiornato": quello cambia a ogni esecuzione e da solo farebbe
+          # scattare un commit ogni notte anche senza sagre nuove.
+          def per_id(d):
+              return {s["id"]: s for s in d["sagre"]}
+
+          if per_id(vecchio) == per_id(nuovo):
+              print("cambiato=no")
+              print(f"nota=nessuna sagra nuova ({len(nuovo['sagre'])} in archivio)")
+          else:
+              json.dump(nuovo, open("data/archivio-sagre.json", "w"))
+              print("cambiato=si")
+              print(f"nota={len(vecchio['sagre'])} -> {len(nuovo['sagre'])} sagre")
+          PY
+
+      - name: Riepilogo
+        run: echo "${{ steps.confronto.outputs.nota }}"
+
+      - name: Committa l'archivio
+        if: steps.confronto.outputs.cambiato == 'si'
         run: |
-          if git diff --quiet data/archivio-sagre.json; then
-            echo "nessuna sagra nuova, niente da fare"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/archivio-sagre.json
