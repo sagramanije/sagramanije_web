@@ -1,0 +1,61 @@
+name: Archivio sagre
+
+# L'API pubblica solo le sagre future: quando una finisce, sparisce. Questo job
+# la cattura prima che succeda e la mette in archivio, così la sua pagina resta
+# viva e indicizzata. Va eseguito almeno una volta al giorno, o le sagre che
+# finiscono nel frattempo le perdiamo per sempre.
+on:
+  schedule:
+    - cron: "0 3 * * *" # ogni notte alle 03:00 UTC
+  workflow_dispatch: # e a mano, dalla tab Actions
+
+# Serve per poter committare l'archivio aggiornato.
+permissions:
+  contents: write
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scarica l'archivio aggiornato dal sito
+        run: |
+          curl --fail --silent --show-error --max-time 60 \
+            https://sagramanije.it/api/archivio \
+            -o /tmp/archivio.json
+          # Se la risposta non è JSON valido o non ha sagre, meglio fallire
+          # che committare un archivio vuoto sopra quello buono.
+          python3 -c "
+          import json, sys
+          d = json.load(open('/tmp/archivio.json'))
+          if not isinstance(d.get('sagre'), list) or len(d['sagre']) == 0:
+              sys.exit('archivio vuoto o malformato: non committo')
+          print(f\"ok, {len(d['sagre'])} sagre\")
+          "
+
+      - name: Rifiuta un archivio che perde sagre
+        run: |
+          # L'archivio può solo crescere. Se il file nuovo ne ha meno del
+          # vecchio significa che qualcosa è andato storto a monte.
+          python3 -c "
+          import json, sys
+          vecchio = json.load(open('data/archivio-sagre.json'))['sagre']
+          nuovo = json.load(open('/tmp/archivio.json'))['sagre']
+          if len(nuovo) < len(vecchio):
+              sys.exit(f'archivio in calo: {len(vecchio)} -> {len(nuovo)}, non committo')
+          print(f'{len(vecchio)} -> {len(nuovo)}')
+          "
+          cp /tmp/archivio.json data/archivio-sagre.json
+
+      - name: Committa se è cambiato qualcosa
+        run: |
+          if git diff --quiet data/archivio-sagre.json; then
+            echo "nessuna sagra nuova, niente da fare"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/archivio-sagre.json
+          git commit -m "[data] aggiornato archivio sagre"
+          git push

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getSagreAbruzzo, mesiConSagre } from "../lib/sagre";
+import { eConclusa, getSagreAbruzzo, mesePassato, mesiConSagre } from "../lib/sagre";
 import { SITE_URL } from "../lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -21,16 +21,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const sagre = await getSagreAbruzzo();
-    const mesi = mesiConSagre(sagre).map((m) => ({
-      url: `${SITE_URL}/sagre/abruzzo/${m.slug}`,
-      lastModified: aggiornato,
-      changeFrequency: "daily" as const,
-      priority: 0.8,
-    }));
+
+    // Mesi ed eventi passati restano in sitemap — sono pagine vive, che Google
+    // deve continuare a conoscere — ma con priorità e frequenza più basse:
+    // non cambiano più e non sono lì che vogliamo il traffico.
+    const mesi = mesiConSagre(sagre).map((m) => {
+      const passato = mesePassato(m);
+      return {
+        url: `${SITE_URL}/sagre/abruzzo/${m.slug}`,
+        ...(passato ? {} : { lastModified: aggiornato }),
+        changeFrequency: passato ? ("yearly" as const) : ("daily" as const),
+        priority: passato ? 0.3 : 0.8,
+      };
+    });
     const eventi = sagre.map((s) => ({
       url: `${SITE_URL}/sagra/${s.slug}`,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
+      changeFrequency: eConclusa(s) ? ("yearly" as const) : ("weekly" as const),
+      priority: eConclusa(s) ? 0.3 : 0.6,
     }));
     return [...fisse, ...mesi, ...eventi];
   } catch {

@@ -1,5 +1,6 @@
 import "server-only";
 import * as z from "zod";
+import archivioJson from "../data/archivio-sagre.json";
 
 // Stessa API dell'app mobile (sagramanije/src/services/sagra.service.ts).
 // Qui gira solo lato server: l'URL non finisce mai nel bundle client.
@@ -70,7 +71,16 @@ const SagraApi = z.object({
 
 const NearbyResponse = z.object({ risultati: z.array(SagraApi) });
 
-export type Sagra = z.infer<typeof SagraApi> & { slug: string };
+// L'archivio committato in data/: le sagre già viste, con lo slug che è stato
+// loro assegnato. Stessa forma dell'API, più lo slug.
+const ArchivioFile = z.object({
+  aggiornato: z.string().nullable(),
+  sagre: z.array(SagraApi.extend({ slug: z.string() })),
+});
+
+type SagraApiT = z.infer<typeof SagraApi>;
+
+export type Sagra = SagraApiT & { slug: string };
 
 // --- fetch + normalizzazione ---
 
@@ -83,11 +93,8 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/**
- * Tutte le sagre abruzzesi, ordinate per data di inizio.
- * Cache di Next sul fetch: ISR ogni SAGRE_REVALIDATE secondi.
- */
-export async function getSagreAbruzzo(): Promise<Sagra[]> {
+/** Le sagre abruzzesi attualmente in cartellone, dall'API. */
+async function fetchLive(): Promise<SagraApiT[]> {
   if (!API_BASE_URL) throw new Error("SAGRE_API_BASE_URL non impostata");
 
   const res = await fetch(`${API_BASE_URL}/sagre/vicine`, {
@@ -95,26 +102,78 @@ export async function getSagreAbruzzo(): Promise<Sagra[]> {
   });
   if (!res.ok) throw new Error(`API sagre: HTTP ${res.status}`);
 
-  const tutte = NearbyResponse.parse(await res.json()).risultati;
-
-  const abruzzo = tutte.filter(
+  return NearbyResponse.parse(await res.json()).risultati.filter(
     // "Abruzzo" arriva pulito, ma il campo regione in generale è sporco
     // (es. "Friuli Venezia Giulia" / "Friuli-Venezia Giulia"): meglio includes.
     (s) => s.regione?.toLowerCase().includes("abruzzo") ?? false,
   );
+}
 
-  abruzzo.sort(
+/** Le sagre già archiviate, con lo slug che avevano al momento dell'archiviazione. */
+function leggiArchivio(): Sagra[] {
+  const parsed = ArchivioFile.safeParse(archivioJson);
+  // Un archivio corrotto non deve mandare giù il sito: peggio che vada,
+  // si torna al comportamento di prima (solo API).
+  return parsed.success ? parsed.data.sagre : [];
+}
+
+/**
+ * Assegna gli slug. Quelli già in archivio sono CONGELATI e non si ricalcolano
+ * mai: un URL pubblicato non deve cambiare per nessun motivo, nemmeno se in
+ * futuro arriva un'omonima che gli contenderebbe lo slug corto.
+ */
+function assegnaSlug(sagre: SagraApiT[], congelati: Map<number, string>): Sagra[] {
+  const presi = new Set(congelati.values());
+  return sagre.map((s) => {
+    const gia = congelati.get(s.id);
+    if (gia) return { ...s, slug: gia };
+
+    const base = slugify(`${s.nome_sagra} ${s.citta ?? ""}`) || String(s.id);
+    const slug = presi.has(base) ? `${base}-${s.id}` : base;
+    presi.add(slug);
+    return { ...s, slug };
+  });
+}
+
+/**
+ * Tutte le sagre abruzzesi che conosciamo — quelle in cartellone più quelle
+ * archiviate — ordinate per data di inizio.
+ *
+ * L'API restituisce solo gli eventi futuri: quando una sagra finisce sparisce
+ * di lì, e senza archivio la sua pagina diventerebbe un 404. L'unione con
+ * l'archivio è ciò che tiene vivi (e indicizzati) gli anni passati.
+ */
+export async function getSagreAbruzzo(): Promise<Sagra[]> {
+  const archiviate = leggiArchivio();
+
+  let live: SagraApiT[] = [];
+  try {
+    live = await fetchLive();
+  } catch (errore) {
+    // Con l'archivio in mano possiamo servire il sito anche ad API spenta.
+    if (archiviate.length === 0) throw errore;
+  }
+
+  // A parità di id vince il dato live: date e orari possono essere corretti
+  // dalla fonte dopo che li abbiamo archiviati.
+  const perId = new Map<number, SagraApiT>();
+  for (const s of archiviate) perId.set(s.id, s);
+  for (const s of live) perId.set(s.id, s);
+
+  const tutte = [...perId.values()].sort(
     (a, b) => (a.data_inizio?.getTime() ?? Infinity) - (b.data_inizio?.getTime() ?? Infinity),
   );
 
-  // Slug parlante e stabile; l'id numerico risolve gli omonimi.
-  const visti = new Map<string, number>();
-  return abruzzo.map((s) => {
-    const base = slugify(`${s.nome_sagra} ${s.citta ?? ""}`) || String(s.id);
-    const n = visti.get(base) ?? 0;
-    visti.set(base, n + 1);
-    return { ...s, slug: n === 0 ? base : `${base}-${s.id}` };
-  });
+  return assegnaSlug(tutte, new Map(archiviate.map((s) => [s.id, s.slug])));
+}
+
+/** Una sagra è conclusa se l'ultimo giorno è ormai passato. */
+export function eConclusa(s: Sagra, adesso: Date = new Date()): boolean {
+  const fine = s.data_fine ?? s.data_inizio;
+  if (!fine) return false;
+  const oggi = new Date(adesso);
+  oggi.setHours(0, 0, 0, 0);
+  return fine < oggi;
 }
 
 export async function getSagraBySlug(slug: string): Promise<Sagra | undefined> {
@@ -153,6 +212,14 @@ export function sagreNelMese(sagre: Sagra[], mese: Mese): Sagra[] {
   });
 }
 
+/** Un mese è passato se è finito prima di quello corrente. */
+export function mesePassato(m: Mese, adesso: Date = new Date()): boolean {
+  return (
+    m.anno < adesso.getFullYear() ||
+    (m.anno === adesso.getFullYear() && m.indice < adesso.getMonth())
+  );
+}
+
 /** I mesi (ordinati) che hanno almeno una sagra, per pagine e nav. */
 export function mesiConSagre(sagre: Sagra[]): Mese[] {
   const mappa = new Map<string, Mese>();
@@ -185,7 +252,7 @@ export function formatIntervallo(s: Sagra): string {
   return `dal ${s.data_inizio.toLocaleDateString("it-IT", { day: "numeric", month: "long" })} al ${s.data_fine.toLocaleDateString("it-IT", opts)}`;
 }
 
-function toISO(d: Date): string {
+export function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -195,8 +262,12 @@ function toISO(d: Date): string {
  */
 export function riassunto(s: Sagra): string {
   const luogo = s.citta ? `a ${s.citta}${s.provincia ? ` (${s.provincia})` : ""}` : "in Abruzzo";
-  const tipo = s.category?.toLowerCase() === "sagra" ? "La sagra" : "L'evento";
-  const quando = s.data_inizio ? ` si tiene ${formatIntervallo(s)}` : " è in programma";
+  const sagra = s.category?.toLowerCase() === "sagra";
+  const tipo = sagra ? "La sagra" : "L'evento";
+  // Al passato quando è già finita, o lo snippet su Google promette una sagra
+  // che non c'è più.
+  const passato = eConclusa(s) ? (sagra ? " si è tenuta" : " si è tenuto") : " si tiene";
+  const quando = s.data_inizio ? `${passato} ${formatIntervallo(s)}` : " è in programma";
   const orario = s.ora_inizio ? `, a partire dalle ${s.ora_inizio}` : "";
   return `${tipo} "${s.nome_sagra}"${quando} ${luogo}${orario}.`;
 }

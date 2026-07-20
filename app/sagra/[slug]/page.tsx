@@ -7,6 +7,7 @@ import SiteNav from "../../components/site-nav";
 import StripedPlaceholder from "../../components/striped-placeholder";
 import Image from "next/image";
 import {
+  eConclusa,
   eventJsonLd,
   formatIntervallo,
   getSagraBySlug,
@@ -58,6 +59,7 @@ export default async function SagraPage({ params }: Props) {
   if (!sagra) notFound();
 
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
+  const conclusa = eConclusa(sagra);
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
   const jsonLd = eventJsonLd(sagra, `${SITE_URL}/sagra/${slug}`);
@@ -139,6 +141,26 @@ export default async function SagraPage({ params }: Props) {
           </p>
         ) : null}
 
+        {conclusa ? (
+          // La pagina resta viva e indicizzabile anche a sagra finita: quello
+          // che cambia è che diciamo chiaramente che è passata e rimandiamo
+          // al calendario in corso, invece di sparire con un 404.
+          <div className="mt-6 rounded-3xl bg-beige p-6">
+            <p className="font-title text-lg">Questa edizione è conclusa</p>
+            <p className="mt-2 text-muted">
+              La sagra si è svolta {formatIntervallo(sagra)}. Di solito torna
+              ogni anno: intanto guarda{" "}
+              <Link
+                href="/sagre/abruzzo"
+                className="font-bold text-primary-ink hover:underline"
+              >
+                le sagre in programma adesso
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
+
         <p className="mt-6 text-lg leading-relaxed text-muted">{riassunto(sagra)}</p>
 
         <div className="mt-8 flex flex-wrap gap-4">
@@ -157,15 +179,18 @@ export default async function SagraPage({ params }: Props) {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 font-bold text-white transition-transform hover:-translate-y-0.5"
-          >
-            <Navigation size={17} />
-            Come arrivare
-          </a>
+          {/* "Come arrivare" su una sagra finita sarebbe un invito a vuoto. */}
+          {conclusa ? null : (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 font-bold text-white transition-transform hover:-translate-y-0.5"
+            >
+              <Navigation size={17} />
+              Come arrivare
+            </a>
+          )}
           {sagra.link_pagina_ufficiale ? (
             <a
               href={sagra.link_pagina_ufficiale}

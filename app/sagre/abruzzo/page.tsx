@@ -3,7 +3,13 @@ import Link from "next/link";
 import EventCard from "../../components/event-card";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
-import { getSagreAbruzzo, mesiConSagre, sagreNelMese } from "../../../lib/sagre";
+import {
+  eConclusa,
+  getSagreAbruzzo,
+  mesePassato,
+  mesiConSagre,
+  sagreNelMese,
+} from "../../../lib/sagre";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 
 export const revalidate = 21_600; // allineato a SAGRE_REVALIDATE in lib/sagre.ts
@@ -28,18 +34,28 @@ function maiuscola(s: string) {
 
 export default async function SagreAbruzzoPage() {
   const sagre = await getSagreAbruzzo();
-  const mesi = mesiConSagre(sagre);
+  // L'hub parla del presente: i mesi già passati restano raggiungibili (e
+  // indicizzati) ma vanno in fondo, come archivio, senza riempire la pagina.
+  const mesi = mesiConSagre(sagre).filter((m) => !mesePassato(m));
+  const archivio = mesiConSagre(sagre)
+    .filter((m) => mesePassato(m))
+    .reverse();
 
   const itemList = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Sagre in Abruzzo",
-    itemListElement: sagre.slice(0, 50).map((s, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: s.nome_sagra,
-      url: `${SITE_URL}/sagra/${s.slug}`,
-    })),
+    // Solo sagre ancora da venire: l'elenco strutturato deve rispecchiare
+    // quello che il visitatore può effettivamente andare a vedere.
+    itemListElement: sagre
+      .filter((s) => !eConclusa(s))
+      .slice(0, 50)
+      .map((s, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: s.nome_sagra,
+        url: `${SITE_URL}/sagra/${s.slug}`,
+      })),
   };
 
   const breadcrumb = {
@@ -112,6 +128,27 @@ export default async function SagreAbruzzoPage() {
             </section>
           );
         })}
+
+        {archivio.length > 0 ? (
+          <nav className="mt-16" aria-label="Mesi passati">
+            <h2 className="font-title text-2xl">Le sagre dei mesi scorsi</h2>
+            <p className="mt-2 max-w-xl text-muted">
+              Le edizioni già passate restano consultabili: quasi tutte queste
+              sagre tornano ogni anno, più o meno negli stessi giorni.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {archivio.map((m) => (
+                <Link
+                  key={m.slug}
+                  href={`/sagre/abruzzo/${m.slug}`}
+                  className="rounded-full bg-beige px-4 py-2 text-sm font-bold hover:bg-primary hover:text-white"
+                >
+                  {maiuscola(m.nome)} {m.anno}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        ) : null}
 
         <section className="mt-16 rounded-3xl bg-surface p-8">
           <h2 className="font-title text-2xl">Manca una sagra?</h2>
