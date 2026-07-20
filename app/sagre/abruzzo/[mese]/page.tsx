@@ -10,6 +10,7 @@ import {
   parseMeseSlug,
   sagreNelMese,
 } from "../../../../lib/sagre";
+import { OG_DEFAULTS, SITE_URL } from "../../../../lib/site";
 
 export const revalidate = 21_600;
 
@@ -39,11 +40,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const mese = parseMeseSlug(slug);
   if (!mese) return {};
   const titolo = `Sagre in Abruzzo ${aMese(mese.nome)} ${mese.anno}: date e paesi`;
+
+  // Il numero è il nostro vantaggio sui portali concorrenti: se ce l'abbiamo,
+  // finisce in descrizione (e quindi nello snippet). Se l'API è giù, si tace.
+  let quante: number | null = null;
+  try {
+    quante = sagreNelMese(await getSagreAbruzzo(), mese).length;
+  } catch {
+    quante = null;
+  }
+  const elenco = quante
+    ? `Tutte le ${quante} sagre e feste di paese`
+    : "Le sagre e le feste di paese";
+
   return {
-    title: `${titolo} | Sagramanije`,
-    description: `Le sagre e le feste di paese in Abruzzo ${aMese(mese.nome)} ${mese.anno}: date, orari e paesi, in aggiornamento continuo. Trovale sulla mappa con l'app Sagramanije.`,
+    title: titolo,
+    description: `${elenco} in Abruzzo ${aMese(mese.nome)} ${mese.anno}: date, orari e paesi, in aggiornamento continuo. Trovale sulla mappa con l'app Sagramanije.`,
     alternates: { canonical: `/sagre/abruzzo/${slug}` },
-    openGraph: { title: titolo, url: `/sagre/abruzzo/${slug}` },
+    openGraph: { ...OG_DEFAULTS, title: titolo, url: `/sagre/abruzzo/${slug}` },
   };
 }
 
@@ -66,15 +80,34 @@ export default async function MesePage({ params }: Props) {
       "@type": "ListItem",
       position: i + 1,
       name: s.nome_sagra,
-      url: `https://sagramanije.it/sagra/${s.slug}`,
+      url: `${SITE_URL}/sagra/${s.slug}`,
     })),
+  };
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Sagramanije", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Sagre in Abruzzo",
+        item: `${SITE_URL}/sagre/abruzzo`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: `${maiuscola(mese.nome)} ${mese.anno}`,
+      },
+    ],
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([itemList, breadcrumb]) }}
       />
       <SiteNav />
 

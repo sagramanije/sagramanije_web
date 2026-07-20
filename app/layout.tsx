@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
+import { OG_DEFAULTS, SITE_URL } from "../lib/site";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -13,16 +14,18 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sagramanije — Trova la tua sagra",
+  // Senza questo i campi relativi (canonical, og:url, og:image) finiscono nel
+  // markup così come sono: i canonical restano relativi e le og:image si rompono.
+  metadataBase: new URL(SITE_URL),
+  // Le pagine passano il titolo "nudo": il suffisso del brand lo mette il template.
+  title: {
+    default: "Sagre in Abruzzo: l'app che te le trova vicino | Sagramanije",
+    template: "%s | Sagramanije",
+  },
   description:
     "Le sagre e le feste di paese dell'Abruzzo, su una mappa. Scopri cosa si mangia stasera a due passi da casa.",
-  openGraph: {
-    title: "Sagramanije — Trova la tua sagra",
-    description:
-      "Le sagre e le feste di paese dell'Abruzzo, su una mappa. Scopri cosa si mangia stasera a due passi da casa.",
-    locale: "it_IT",
-    type: "website",
-  },
+  openGraph: OG_DEFAULTS,
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

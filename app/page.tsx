@@ -1,4 +1,6 @@
 import { ChevronRight, Info, MapPin, PlusCircle, Star } from "lucide-react";
+import type { Metadata } from "next";
+import { OG_DEFAULTS, SITE_URL } from "../lib/site";
 import FeatureCard from "./components/feature-card";
 import MockDetail from "./components/mock-detail";
 import MockList from "./components/mock-list";
@@ -14,13 +16,37 @@ import ProssimeSagre from "./components/prossime-sagre";
 // La sezione "prossime sagre" legge l'API: rigenera la home ogni 6 ore.
 export const revalidate = 21_600;
 
+// Il titolo lo eredita da title.default nel layout: la home è l'unica pagina
+// che non deve passare dal template.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { ...OG_DEFAULTS, url: "/" },
+};
+
 const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
   "Segnalazione sagra",
 )}`;
 
+// Entità del brand: aiuta Google a collegare sito, nome e app.
+const orgJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Sagramanije",
+  url: SITE_URL,
+  email: EMAIL,
+  logo: `${SITE_URL}/logo.png`,
+  description:
+    "Il calendario delle sagre e delle feste di paese dell'Abruzzo, su mappa.",
+  areaServed: { "@type": "AdministrativeArea", name: "Abruzzo" },
+};
+
 export default function Home() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
       <Analytics />
       <SiteNav />
 

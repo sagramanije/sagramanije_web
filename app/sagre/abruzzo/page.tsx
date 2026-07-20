@@ -4,16 +4,18 @@ import EventCard from "../../components/event-card";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import { getSagreAbruzzo, mesiConSagre, sagreNelMese } from "../../../lib/sagre";
+import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 
 export const revalidate = 21_600; // allineato a SAGRE_REVALIDATE in lib/sagre.ts
 
 export const metadata: Metadata = {
-  title: "Sagre in Abruzzo: calendario con date, paesi e orari | Sagramanije",
+  title: "Sagre in Abruzzo: calendario con date, paesi e orari",
   description:
     "Il calendario delle sagre e feste di paese in Abruzzo, mese per mese: date, orari e paesi in provincia di L'Aquila, Teramo, Pescara e Chieti. Aggiornato di continuo.",
   alternates: { canonical: "/sagre/abruzzo" },
   openGraph: {
-    title: "Sagre in Abruzzo: il calendario | Sagramanije",
+    ...OG_DEFAULTS,
+    title: "Sagre in Abruzzo: il calendario",
     description:
       "Tutte le sagre e le feste di paese in Abruzzo, mese per mese, con date e orari.",
     url: "/sagre/abruzzo",
@@ -36,15 +38,24 @@ export default async function SagreAbruzzoPage() {
       "@type": "ListItem",
       position: i + 1,
       name: s.nome_sagra,
-      url: `https://sagramanije.it/sagra/${s.slug}`,
+      url: `${SITE_URL}/sagra/${s.slug}`,
     })),
+  };
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Sagramanije", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Sagre in Abruzzo" },
+    ],
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([itemList, breadcrumb]) }}
       />
       <SiteNav />
 

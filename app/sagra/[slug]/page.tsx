@@ -15,6 +15,7 @@ import {
   meseDi,
   riassunto,
 } from "../../../lib/sagre";
+import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 
 export const revalidate = 21_600;
 
@@ -39,10 +40,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : " in Abruzzo";
   const titolo = `${sagra.nome_sagra}${anno ? ` ${anno}` : ""}${luogo}: date e orari`;
   return {
-    title: `${titolo} | Sagramanije`,
+    title: titolo,
     description: riassunto(sagra),
     alternates: { canonical: `/sagra/${slug}` },
-    openGraph: { title: titolo, description: riassunto(sagra), url: `/sagra/${slug}` },
+    openGraph: {
+      ...OG_DEFAULTS,
+      title: titolo,
+      description: riassunto(sagra),
+      url: `/sagra/${slug}`,
+    },
   };
 }
 
@@ -54,13 +60,30 @@ export default async function SagraPage({ params }: Props) {
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
-  const jsonLd = eventJsonLd(sagra, `https://sagramanije.it/sagra/${slug}`);
+  const jsonLd = eventJsonLd(sagra, `${SITE_URL}/sagra/${slug}`);
+  // Stessa scala dei breadcrumb visibili in pagina: home / Abruzzo / mese / evento.
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Sagre in Abruzzo", item: "https://sagramanije.it/sagre/abruzzo" },
-      { "@type": "ListItem", position: 2, name: sagra.nome_sagra },
+      { "@type": "ListItem", position: 1, name: "Sagramanije", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Sagre in Abruzzo",
+        item: `${SITE_URL}/sagre/abruzzo`,
+      },
+      ...(mese
+        ? [
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: `${mese.nome.charAt(0).toUpperCase() + mese.nome.slice(1)} ${mese.anno}`,
+              item: `${SITE_URL}/sagre/abruzzo/${mese.slug}`,
+            },
+          ]
+        : []),
+      { "@type": "ListItem", position: mese ? 4 : 3, name: sagra.nome_sagra },
     ],
   };
 
