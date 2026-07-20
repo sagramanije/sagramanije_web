@@ -1,5 +1,11 @@
 import type { MetadataRoute } from "next";
-import { eConclusa, getSagreAbruzzo, mesePassato, mesiConSagre } from "../lib/sagre";
+import {
+  eConclusa,
+  getSagreAbruzzo,
+  mesePassato,
+  mesiConSagre,
+  PROVINCE,
+} from "../lib/sagre";
 import { SITE_URL } from "../lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -17,6 +23,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/sagre/abruzzo/questo-weekend`,
+      lastModified: aggiornato,
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+    ...PROVINCE.map((p) => ({
+      url: `${SITE_URL}/sagre/abruzzo/provincia/${p.slug}`,
+      lastModified: aggiornato,
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    })),
   ];
 
   try {

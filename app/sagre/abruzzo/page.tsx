@@ -8,6 +8,7 @@ import {
   getSagreAbruzzo,
   mesePassato,
   mesiConSagre,
+  PROVINCE,
   sagreNelMese,
 } from "../../../lib/sagre";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
@@ -92,8 +93,30 @@ export default async function SagreAbruzzoPage() {
           nell&apos;app, sulla mappa e a portata di mano.
         </p>
 
+        {/* scorciatoie: weekend e province */}
+        <nav
+          className="mt-8 flex flex-wrap gap-3"
+          aria-label="Sagre per weekend e provincia"
+        >
+          <Link
+            href="/sagre/abruzzo/questo-weekend"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-ink"
+          >
+            Questo weekend
+          </Link>
+          {PROVINCE.map((p) => (
+            <Link
+              key={p.slug}
+              href={`/sagre/abruzzo/provincia/${p.slug}`}
+              className="rounded-full bg-beige px-4 py-2 text-sm font-bold hover:bg-primary hover:text-white"
+            >
+              {p.nome}
+            </Link>
+          ))}
+        </nav>
+
         {/* nav dei mesi */}
-        <nav className="mt-8 flex flex-wrap gap-3" aria-label="Sagre per mese">
+        <nav className="mt-4 flex flex-wrap gap-3" aria-label="Sagre per mese">
           {mesi.map((m) => (
             <Link
               key={m.slug}

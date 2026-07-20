@@ -212,6 +212,56 @@ export function sagreNelMese(sagre: Sagra[], mese: Mese): Sagra[] {
   });
 }
 
+// --- province ---
+
+export type Provincia = { slug: string; sigla: string; nome: string };
+
+// Le quattro province abruzzesi. La sigla è quella che arriva dall'API
+// (già pulita: "AQ"/"TE"/"PE"/"CH"); lo slug è l'URL parlante.
+export const PROVINCE: Provincia[] = [
+  { slug: "l-aquila", sigla: "AQ", nome: "L'Aquila" },
+  { slug: "teramo", sigla: "TE", nome: "Teramo" },
+  { slug: "pescara", sigla: "PE", nome: "Pescara" },
+  { slug: "chieti", sigla: "CH", nome: "Chieti" },
+];
+
+export function provinciaDaSlug(slug: string): Provincia | null {
+  return PROVINCE.find((p) => p.slug === slug) ?? null;
+}
+
+export function sagreDiProvincia(sagre: Sagra[], p: Provincia): Sagra[] {
+  return sagre.filter((s) => s.provincia?.toUpperCase() === p.sigla);
+}
+
+// --- weekend ---
+
+export type Weekend = { inizio: Date; fine: Date };
+
+/**
+ * Il fine settimana "corrente": venerdì → domenica della settimana in corso.
+ * Da lunedì a giovedì è quello che sta arrivando; da venerdì a domenica è
+ * quello in corso (una sagra iniziata venerdì è ancora "questo weekend" il sabato).
+ */
+export function weekendCorrente(adesso: Date = new Date()): Weekend {
+  const base = new Date(adesso);
+  base.setHours(0, 0, 0, 0);
+  const lun0 = (base.getDay() + 6) % 7; // lun=0 … ven=4 … dom=6
+  const inizio = new Date(base);
+  inizio.setDate(base.getDate() + (4 - lun0)); // venerdì di questa settimana
+  const fine = new Date(inizio);
+  fine.setDate(inizio.getDate() + 2);
+  fine.setHours(23, 59, 59, 999); // domenica sera
+  return { inizio, fine };
+}
+
+export function sagreNelWeekend(sagre: Sagra[], w: Weekend): Sagra[] {
+  return sagre.filter((s) => {
+    if (!s.data_inizio) return false;
+    const fine = s.data_fine ?? s.data_inizio;
+    return s.data_inizio <= w.fine && fine >= w.inizio;
+  });
+}
+
 /** Un mese è passato se è finito prima di quello corrente. */
 export function mesePassato(m: Mese, adesso: Date = new Date()): boolean {
   return (
