@@ -14,6 +14,8 @@ import {
   getSagreAbruzzo,
   locandinaOriginale,
   meseDi,
+  metaDescrizione,
+  paragrafi,
   riassunto,
 } from "../../../lib/sagre";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
@@ -40,14 +42,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? ` a ${sagra.citta}${sagra.provincia ? ` (${sagra.provincia})` : ""}`
     : " in Abruzzo";
   const titolo = `${sagra.nome_sagra}${anno ? ` ${anno}` : ""}${luogo}: date e orari`;
+  const descrizione = metaDescrizione(sagra);
   return {
     title: titolo,
-    description: riassunto(sagra),
+    description: descrizione,
     alternates: { canonical: `/sagra/${slug}` },
     openGraph: {
       ...OG_DEFAULTS,
       title: titolo,
-      description: riassunto(sagra),
+      description: descrizione,
       url: `/sagra/${slug}`,
     },
   };
@@ -61,6 +64,10 @@ export default async function SagraPage({ params }: Props) {
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const conclusa = eConclusa(sagra);
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
+
+  // La descrizione vera dell'evento. Quando manca resta il riassunto dai dati,
+  // che però è quasi identico per tutte le sagre: come testo di pagina vale poco.
+  const descrizione = paragrafi(sagra);
 
   const jsonLd = eventJsonLd(sagra, `${SITE_URL}/sagra/${slug}`);
   // Stessa scala dei breadcrumb visibili in pagina: home / Abruzzo / mese / evento.
@@ -161,7 +168,15 @@ export default async function SagraPage({ params }: Props) {
           </div>
         ) : null}
 
-        <p className="mt-6 text-lg leading-relaxed text-muted">{riassunto(sagra)}</p>
+        {descrizione.length > 0 ? (
+          <div className="mt-6 space-y-4 text-lg leading-relaxed text-muted">
+            {descrizione.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-6 text-lg leading-relaxed text-muted">{riassunto(sagra)}</p>
+        )}
 
         <div className="mt-8 flex flex-wrap gap-4">
           <div className="rounded-3xl bg-surface p-5">

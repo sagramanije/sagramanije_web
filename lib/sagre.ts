@@ -67,6 +67,9 @@ const SagraApi = z.object({
   link_pagina_ufficiale: z.url().nullable().catch(null),
   category: testo,
   ora_inizio: z.string().nullable().catch(null),
+  // La descrizione estesa dell'evento. Manca sulle sagre archiviate prima che
+  // il campo esistesse: lì la pagina ricade sul riassunto costruito dai dati.
+  descrizione: testo.nullable().catch(null),
 });
 
 const NearbyResponse = z.object({ risultati: z.array(SagraApi) });
@@ -308,7 +311,9 @@ export function toISO(d: Date): string {
 
 /**
  * Riassunto costruito SOLO dai fatti dell'API (nome, luogo, date, orario).
- * Niente testi di terzi: le descrizioni della fonte sono coperte da copyright.
+ * È il ripiego per le sagre senza descrizione: come testo di pagina è thin
+ * content — uguale per tutte a meno dei nomi propri — quindi quando la
+ * descrizione estesa c'è vince quella (vedi paragrafi()).
  */
 export function riassunto(s: Sagra): string {
   const luogo = s.citta ? `a ${s.citta}${s.provincia ? ` (${s.provincia})` : ""}` : "in Abruzzo";
@@ -320,6 +325,38 @@ export function riassunto(s: Sagra): string {
   const quando = s.data_inizio ? `${passato} ${formatIntervallo(s)}` : " è in programma";
   const orario = s.ora_inizio ? `, a partire dalle ${s.ora_inizio}` : "";
   return `${tipo} "${s.nome_sagra}"${quando} ${luogo}${orario}.`;
+}
+
+/**
+ * La descrizione dell'evento spezzata nei suoi paragrafi, pronta da stampare.
+ * Vuoto se la sagra non ha descrizione: in quel caso la pagina usa riassunto().
+ */
+export function paragrafi(s: Sagra): string[] {
+  if (!s.descrizione) return [];
+  return s.descrizione
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+// Google mostra ~160 caratteri: oltre taglia lui, e a metà parola.
+const META_MAX = 160;
+
+/**
+ * La meta description: l'inizio della descrizione vera, chiuso all'ultima
+ * frase (o all'ultima parola) che ci sta. Se manca, il riassunto dai dati.
+ */
+export function metaDescrizione(s: Sagra): string {
+  const testo = paragrafi(s).join(" ");
+  if (!testo) return riassunto(s);
+  if (testo.length <= META_MAX) return testo;
+
+  const taglio = testo.slice(0, META_MAX + 1);
+  const frase = taglio.search(/[.!?](?=[^.!?]*$)/);
+  // Una frase troppo corta lascerebbe uno snippet mozzo: meglio riempire
+  // fino all'ultima parola intera e chiudere con i puntini.
+  if (frase >= META_MAX / 2) return taglio.slice(0, frase + 1);
+  return `${taglio.slice(0, taglio.lastIndexOf(" "))}…`;
 }
 
 // --- locandine ---
@@ -386,7 +423,9 @@ export function eventJsonLd(s: Sagra, url: string) {
       url,
       ...(s.data_inizio && { validFrom: toISO(s.data_inizio) }),
     },
-    description: riassunto(s),
+    // Nei dati strutturati va la descrizione per intero: è quella che descrive
+    // davvero l'evento, il riassunto dai dati è solo il ripiego.
+    description: paragrafi(s).join("\n\n") || riassunto(s),
     url,
   };
 }
