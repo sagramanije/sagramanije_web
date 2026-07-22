@@ -1,8 +1,5 @@
-import { PLAY_STORE_URL } from "../data";
+import { APP_STORE_URL, PLAY_STORE_URL } from "../data";
 
-// Tenuto per quando l'app esce su App Store: riattivare il Badge commentato
-// sotto e reimportare APP_STORE_URL da ../data.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AppleGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7 shrink-0 fill-current" aria-hidden>
@@ -22,29 +19,41 @@ function PlayGlyph() {
   );
 }
 
+// Finché lo store non ha dato il link definitivo (href "#") la badge non è un
+// link: resta lì a dire "prossimamente", senza portare da nessuna parte.
 function Badge({
   href,
-  eyebrow,
   name,
   children,
 }: {
   href: string;
-  eyebrow: string;
   name: string;
   children: React.ReactNode;
 }) {
-  return (
-    <a
-      href={href}
-      className="flex items-center gap-3 rounded-2xl bg-ink px-5 py-3 text-white transition-transform hover:-translate-y-0.5"
-    >
+  const isLive = href !== "#";
+
+  const content = (
+    <>
       {children}
       <span className="flex flex-col leading-none">
         <span className="text-[10px] uppercase tracking-wide text-white/70">
-          {eyebrow}
+          {isLive ? "Disponibile su" : "Prossimamente su"}
         </span>
         <span className="mt-1 font-title text-base">{name}</span>
       </span>
+    </>
+  );
+
+  const base = "flex items-center gap-3 rounded-2xl bg-ink px-5 py-3 text-white";
+
+  if (!isLive) return <span className={base}>{content}</span>;
+
+  return (
+    <a
+      href={href}
+      className={`${base} transition-transform hover:-translate-y-0.5`}
+    >
+      {content}
     </a>
   );
 }
@@ -52,10 +61,10 @@ function Badge({
 export default function StoreBadges({ className = "" }: { className?: string }) {
   return (
     <div className={`flex flex-wrap gap-3 ${className}`}>
-      {/* <Badge href={APP_STORE_URL} eyebrow="Scarica su" name="App Store">
+      <Badge href={APP_STORE_URL} name="App Store">
         <AppleGlyph />
-      </Badge> */}
-      <Badge href={PLAY_STORE_URL} eyebrow="Disponibile su" name="Google Play">
+      </Badge>
+      <Badge href={PLAY_STORE_URL} name="Google Play">
         <PlayGlyph />
       </Badge>
     </div>

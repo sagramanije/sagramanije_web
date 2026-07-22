@@ -14,7 +14,9 @@ export default function MockList() {
           <MockSlider />
         </div>
         <div className="my-4 flex items-center justify-between">
-          <span className="text-[11px] font-bold">Sagre vicine</span>
+          <span className="text-[11px] font-bold">
+            <span className="text-primary-ink">12</span> sagre vicine
+          </span>
           <MockSwitcher isMap={false} />
         </div>
       </div>

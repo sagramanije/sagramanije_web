@@ -47,6 +47,66 @@ export const SAGRA_DETTAGLIO: SagraDemo = {
   distanza: "31.08 km",
 };
 
+// Ricalca il programma dell'app (schermata sagra/[id]/attivita): giorni in
+// ordine, e dentro ogni giorno le attività ordinate per orario.
+export type AttivitaDemo = {
+  inizio: string;
+  fine?: string;
+  titolo: string;
+  descrizione?: string;
+};
+
+export const PROGRAMMA_DEMO: { giorno: string; attivita: AttivitaDemo[] }[] = [
+  {
+    giorno: "Sabato 25 luglio",
+    attivita: [
+      {
+        inizio: "10:00",
+        fine: "12:00",
+        titolo: "Corteo storico per il centro",
+        descrizione: "Sbandieratori e tamburini dei sette sestieri.",
+      },
+      {
+        inizio: "17:30",
+        titolo: "Benedizione dei cavalieri",
+      },
+      {
+        inizio: "19:00",
+        fine: "23:30",
+        titolo: "Apertura stand gastronomici",
+        descrizione: "Porchetta, primi tipici e specialità locali.",
+      },
+      {
+        inizio: "21:30",
+        titolo: "Concerto in piazza Garibaldi",
+        descrizione: "Musica dal vivo fino a mezzanotte.",
+      },
+    ],
+  },
+  {
+    giorno: "Domenica 26 luglio",
+    attivita: [
+      {
+        inizio: "09:30",
+        titolo: "Mercatino dell'artigianato",
+        descrizione: "Banchi di prodotti tipici lungo il corso.",
+      },
+      {
+        inizio: "12:30",
+        fine: "15:00",
+        titolo: "Pranzo sotto l'acquedotto",
+        descrizione: "Menù degustazione a cura dei ristoratori del paese.",
+      },
+      {
+        inizio: "17:00",
+        titolo: "Giostra e premiazione",
+        descrizione: "La sfida tra i cavalieri dei sestieri.",
+      },
+      { inizio: "23:00", titolo: "Spettacolo pirotecnico" },
+    ],
+  },
+];
+
 export const EMAIL = "sagramanije@gmail.com";
 
 // Contitolari del trattamento (art. 26 GDPR): dietro l'app ci sono due persone

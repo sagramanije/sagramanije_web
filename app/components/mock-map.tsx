@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Navigation } from "lucide-react";
+import { Calendar, MapPin, Navigation, X } from "lucide-react";
 import { SAGRA_DETTAGLIO } from "../data";
 import { MockHeader, MockSwitcher, MockTabBar } from "./mock-chrome";
 import { PinMark } from "./wordmark";
@@ -40,10 +40,15 @@ export function MapCanvas({ className = "" }: { className?: string }) {
   );
 }
 
+// Nell'app i cluster sono cerchi pieni col bordo bianco da 3px e il raggio che
+// cresce col numero di sagre (layer "clusters" in components/index/map.tsx).
 function Cluster({ count, className }: { count: number; className: string }) {
+  const size = count >= 25 ? 52 : count >= 10 ? 40 : 32;
+
   return (
     <span
-      className={`absolute flex h-11 w-11 items-center justify-center rounded-full bg-primary text-xs font-bold text-white ring-4 ring-primary/25 ${className}`}
+      className={`absolute flex items-center justify-center rounded-full bg-primary/90 text-xs font-bold text-white ring-[3px] ring-white ${className}`}
+      style={{ width: size, height: size }}
     >
       {count}
     </span>
@@ -57,7 +62,9 @@ export default function MockMap() {
       <div className="px-5 pt-3">
         <MockHeader withTitle={false} />
         <div className="my-3 flex items-center justify-between">
-          <span className="text-[11px] font-bold">Sagre vicine</span>
+          <span className="text-[11px] font-bold">
+            <span className="text-primary-ink">12</span> sagre vicine
+          </span>
           <MockSwitcher isMap />
         </div>
       </div>
@@ -65,14 +72,16 @@ export default function MockMap() {
       <div className="relative flex-1 overflow-hidden">
         <MapCanvas className="absolute inset-0 h-full w-full" />
 
-        <Cluster count={12} className="left-[18%] top-[16%]" />
-        <Cluster count={4} className="right-[16%] top-[38%]" />
-        <PinMark className="absolute left-[46%] top-[30%] h-8 w-8 text-primary drop-shadow" />
-        <PinMark className="absolute left-[28%] top-[52%] h-8 w-8 text-primary drop-shadow" />
-        <PinMark className="absolute right-[30%] bottom-[38%] h-8 w-8 text-primary drop-shadow" />
+        <Cluster count={12} className="left-[14%] top-[14%]" />
+        <Cluster count={4} className="right-[16%] top-[36%]" />
+        <PinMark className="absolute left-[46%] top-[28%] h-8 w-8 text-primary drop-shadow" />
+        <PinMark className="absolute left-[28%] top-[48%] h-8 w-8 text-primary drop-shadow" />
+        <PinMark className="absolute right-[30%] bottom-[42%] h-8 w-8 text-primary drop-shadow" />
 
-        <div className="absolute inset-x-3 bottom-3 rounded-3xl bg-surface p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-          <h3 className="font-title text-base leading-tight">
+        {/* card che compare al tap su un pin singolo */}
+        <div className="absolute inset-x-3 bottom-3 rounded-2xl bg-surface p-4 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
+          <X size={16} className="absolute right-3 top-3 text-ink" />
+          <h3 className="pr-6 font-title text-base leading-tight">
             {SAGRA_DETTAGLIO.nome}
           </h3>
           <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-warm">
@@ -83,8 +92,8 @@ export default function MockMap() {
             <Calendar size={13} className="text-primary" />
             {SAGRA_DETTAGLIO.date}
           </p>
-          <span className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-primary py-2.5 text-[12px] font-bold text-white">
-            <Navigation size={14} />
+          <span className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[12px] font-bold text-white">
+            <Navigation size={14} fill="currentColor" />
             Indicazioni
           </span>
         </div>

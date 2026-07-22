@@ -33,12 +33,14 @@ export default function SiteNav() {
               </Link>
             </li>
           </ul>
-          <a
-            href={APP_STORE_URL}
+          {/* Finché gli store non danno i link, la CTA non può promettere un
+              download: rimanda alle badge "prossimamente" in cima alla home. */}
+          <Link
+            href={APP_STORE_URL === "#" ? "/#top" : APP_STORE_URL}
             className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
           >
-            Scarica l&apos;app
-          </a>
+            {APP_STORE_URL === "#" ? "App in arrivo" : "Scarica l'app"}
+          </Link>
         </div>
       </nav>
     </header>

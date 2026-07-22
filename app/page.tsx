@@ -5,6 +5,7 @@ import FeatureCard from "./components/feature-card";
 import MockDetail from "./components/mock-detail";
 import MockList from "./components/mock-list";
 import MockMap from "./components/mock-map";
+import MockProgramma from "./components/mock-programma";
 import PhoneFrame from "./components/phone-frame";
 import SiteFooter from "./components/site-footer";
 import SiteNav from "./components/site-nav";
@@ -118,11 +119,13 @@ export default function Home() {
             <h2 className="font-title text-3xl sm:text-4xl">Le schermate</h2>
             <p className="mt-3 max-w-xl text-muted">
               Dalla lista delle sagre vicine alla mappa con i gruppi di eventi,
-              fino alle indicazioni stradali per arrivarci.
+              fino al programma ora per ora e alle indicazioni per arrivarci.
             </p>
           </div>
 
-          <div className="mt-12 flex snap-x snap-mandatory gap-8 overflow-x-auto px-6 pb-6 md:justify-center">
+          {/* 4 telefoni = 1296px + padding: sotto 2xl la fila scorre, quindi
+              niente justify-center (taglierebbe il primo telefono) */}
+          <div className="mt-12 flex snap-x snap-mandatory gap-8 overflow-x-auto px-6 pb-6 2xl:justify-center">
             <PhoneFrame label="Lista" className="snap-center">
               <MockList />
             </PhoneFrame>
@@ -131,6 +134,9 @@ export default function Home() {
             </PhoneFrame>
             <PhoneFrame label="Dettaglio" className="snap-center">
               <MockDetail />
+            </PhoneFrame>
+            <PhoneFrame label="Programma" className="snap-center">
+              <MockProgramma />
             </PhoneFrame>
           </div>
         </section>
