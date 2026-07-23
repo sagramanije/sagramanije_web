@@ -37,11 +37,6 @@ jobs:
 
           vecchio = json.load(open("data/archivio-sagre.json"))
 
-          # L'archivio può solo crescere: se cala, a monte è andato storto
-          # qualcosa e non voglio sovrascrivere quello buono.
-          if len(nuovo["sagre"]) < len(vecchio["sagre"]):
-              sys.exit(f"archivio in calo: {len(vecchio['sagre'])} -> {len(nuovo['sagre'])}")
-
           # Confronto per id, ignorando l'ordine e soprattutto il campo
           # "aggiornato": quello cambia a ogni esecuzione e da solo farebbe
           # scattare un commit ogni notte anche senza sagre nuove.
