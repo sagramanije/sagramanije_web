@@ -12,8 +12,12 @@ import {
   sagreNelMese,
 } from "../../../lib/sagre";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
+import { EMAIL } from "@/app/data";
 
 export const revalidate = 21_600; // allineato a SAGRE_REVALIDATE in lib/sagre.ts
+const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
+  "Segnalazione sagra",
+)}`;
 
 export const metadata: Metadata = {
   title: "Sagre in Abruzzo: calendario con date, paesi e orari",
@@ -179,7 +183,7 @@ export default async function SagreAbruzzoPage() {
             Setacciamo il web a caccia di sagre abruzzesi, ma ogni tanto
             qualcuna ci sfugge.{" "}
             <a
-              href="mailto:sagramanije@gmail.com?subject=Segnalazione%20sagra"
+              href={REPORT_MAILTO}
               className="font-bold text-primary-ink hover:underline"
             >
               Segnalacela
