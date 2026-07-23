@@ -31,8 +31,8 @@ jobs:
           python3 <<'PY' >> "$GITHUB_OUTPUT"
           import json, sys
 
-          nuovo = json.load(open("/tmp/archivio.json"))
-          if not isinstance(nuovo.get("sagre"), list) or not nuovo["sagre"]:
+          scaricato = json.load(open("/tmp/archivio.json"))
+          if not isinstance(scaricato.get("sagre"), list) or not scaricato["sagre"]:
               sys.exit("archivio vuoto o malformato: non tocco niente")
 
           vecchio = json.load(open("data/archivio-sagre.json"))
@@ -43,13 +43,30 @@ jobs:
           def per_id(d):
               return {s["id"]: s for s in d["sagre"]}
 
+          vecchie = per_id(vecchio)
+          scaricate = per_id(scaricato)
+
+          # L'archivio può solo crescere o correggere dati di sagre già viste:
+          # se il sito/API non restituisce più un id già committato, lo teniamo.
+          unite = {**vecchie, **scaricate}
+          nuovo = {
+              **scaricato,
+              "sagre": sorted(unite.values(), key=lambda s: (s.get("data_inizio") or "9999-12-31", s["id"])),
+          }
+
           if per_id(vecchio) == per_id(nuovo):
               print("cambiato=no")
               print(f"nota=nessuna sagra nuova ({len(nuovo['sagre'])} in archivio)")
           else:
+              aggiunte = sorted(set(scaricate) - set(vecchie))
+              corrette = sum(
+                  1
+                  for id_sagra, sagra in scaricate.items()
+                  if id_sagra in vecchie and vecchie[id_sagra] != sagra
+              )
               json.dump(nuovo, open("data/archivio-sagre.json", "w"))
               print("cambiato=si")
-              print(f"nota={len(vecchio['sagre'])} -> {len(nuovo['sagre'])} sagre")
+              print(f"nota={len(vecchio['sagre'])} -> {len(nuovo['sagre'])} sagre; nuove={len(aggiunte)}, corrette={corrette}")
           PY
 
       - name: Riepilogo
