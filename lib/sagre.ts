@@ -96,18 +96,12 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-type FetchLiveOptions = {
-  cache?: RequestCache;
-  revalidate?: number;
-};
-
 /** Le sagre abruzzesi attualmente in cartellone, dall'API. */
-async function fetchLive(options: FetchLiveOptions = { revalidate: SAGRE_REVALIDATE }): Promise<SagraApiT[]> {
+async function fetchLive(): Promise<SagraApiT[]> {
   if (!API_BASE_URL) throw new Error("SAGRE_API_BASE_URL non impostata");
 
   const res = await fetch(`${API_BASE_URL}/sagre/vicine`, {
-    ...(options.cache ? { cache: options.cache } : {}),
-    ...(options.revalidate !== undefined ? { next: { revalidate: options.revalidate } } : {}),
+    next: { revalidate: SAGRE_REVALIDATE },
   });
   if (!res.ok) throw new Error(`API sagre: HTTP ${res.status}`);
 
@@ -165,26 +159,6 @@ export async function getSagreAbruzzo(): Promise<Sagra[]> {
 
   // A parità di id vince il dato live: date e orari possono essere corretti
   // dalla fonte dopo che li abbiamo archiviati.
-  const perId = new Map<number, SagraApiT>();
-  for (const s of archiviate) perId.set(s.id, s);
-  for (const s of live) perId.set(s.id, s);
-
-  const tutte = [...perId.values()].sort(
-    (a, b) => (a.data_inizio?.getTime() ?? Infinity) - (b.data_inizio?.getTime() ?? Infinity),
-  );
-
-  return assegnaSlug(tutte, new Map(archiviate.map((s) => [s.id, s.slug])));
-}
-
-/**
- * Variante per la pipeline di archiviazione: deve vedere la fonte live fresca
- * e deve fallire se la fonte non risponde. Il sito pubblico invece usa
- * getSagreAbruzzo(), che può ripiegare sull'archivio quando l'API è giù.
- */
-export async function getArchivioSagreAbruzzo(): Promise<Sagra[]> {
-  const archiviate = leggiArchivio();
-  const live = await fetchLive({ cache: "no-store" });
-
   const perId = new Map<number, SagraApiT>();
   for (const s of archiviate) perId.set(s.id, s);
   for (const s of live) perId.set(s.id, s);

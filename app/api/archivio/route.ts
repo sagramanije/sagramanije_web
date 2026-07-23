@@ -1,4 +1,4 @@
-import { getArchivioSagreAbruzzo, toISO } from "../../../lib/sagre";
+import { getSagreAbruzzo, toISO } from "../../../lib/sagre";
 
 // Serve sempre il dato fresco: la GitHub Action che legge questa rotta gira
 // una volta al giorno e non deve trovarsi in mano una copia di ieri.
@@ -11,7 +11,7 @@ export const revalidate = 0;
  * invece di essere riscritta in uno script a parte che può divergere.
  */
 export async function GET() {
-  const sagre = await getArchivioSagreAbruzzo();
+  const sagre = await getSagreAbruzzo();
 
   return Response.json({
     aggiornato: new Date().toISOString(),
