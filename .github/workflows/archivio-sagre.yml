@@ -37,24 +37,40 @@ jobs:
 
           vecchio = json.load(open("data/archivio-sagre.json"))
 
-          # L'archivio può solo crescere: se cala, a monte è andato storto
-          # qualcosa e non voglio sovrascrivere quello buono.
-          if len(nuovo["sagre"]) < len(vecchio["sagre"]):
-              sys.exit(f"archivio in calo: {len(vecchio['sagre'])} -> {len(nuovo['sagre'])}")
-
           # Confronto per id, ignorando l'ordine e soprattutto il campo
           # "aggiornato": quello cambia a ogni esecuzione e da solo farebbe
-          # scattare un commit ogni notte anche senza sagre nuove.
-          def per_id(d):
-              return {s["id"]: s for s in d["sagre"]}
+          # scattare un commit ogni notte anche senza sagre nuove o modificate.
+          def per_id(d, nome):
+              indicizzate = {s["id"]: s for s in d["sagre"]}
+              if len(indicizzate) != len(d["sagre"]):
+                  sys.exit(f"{nome} contiene id duplicati: non tocco niente")
+              return indicizzate
 
-          if per_id(vecchio) == per_id(nuovo):
+          vecchie = per_id(vecchio, "archivio attuale")
+          nuove = per_id(nuovo, "archivio scaricato")
+
+          # L'archivio può solo crescere: controllare gli id, e non soltanto
+          # la lunghezza, evita di accettare una sostituzione accidentale.
+          mancanti = set(vecchie) - set(nuove)
+          if mancanti:
+              sys.exit(f"archivio in calo: mancano {len(mancanti)} id già salvati")
+
+          inserite = set(nuove) - set(vecchie)
+          aggiornate = {
+              id_sagra for id_sagra in set(vecchie) & set(nuove)
+              if vecchie[id_sagra] != nuove[id_sagra]
+          }
+
+          if not inserite and not aggiornate:
               print("cambiato=no")
-              print(f"nota=nessuna sagra nuova ({len(nuovo['sagre'])} in archivio)")
+              print(f"nota=nessuna sagra nuova o aggiornata ({len(nuove)} in archivio)")
           else:
               json.dump(nuovo, open("data/archivio-sagre.json", "w"))
               print("cambiato=si")
-              print(f"nota={len(vecchio['sagre'])} -> {len(nuovo['sagre'])} sagre")
+              print(
+                  f"nota={len(inserite)} nuove, {len(aggiornate)} aggiornate "
+                  f"({len(nuove)} in archivio)"
+              )
           PY
 
       - name: Riepilogo

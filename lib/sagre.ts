@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import * as z from "zod";
 import archivioJson from "../data/archivio-sagre.json";
 
@@ -387,6 +388,27 @@ export function locandinaOriginale(s: Pick<Sagra, "locandina">): string | null {
   } catch {
     return null;
   }
+}
+
+/** Versione corta e deterministica usata esclusivamente come chiave di cache. */
+export function versioneLocandina(originale: string): string {
+  return createHash("sha256").update(originale).digest("hex").slice(0, 12);
+}
+
+/**
+ * URL pubblico e versionato della locandina.
+ *
+ * Il proxy resta identificato dall'id della sagra, mentre la versione cambia
+ * quando cambia l'URL originale. In questo modo sia la CDN sia `next/image`
+ * usano una nuova chiave di cache e non continuano a mostrare la locandina
+ * precedente.
+ */
+export function locandinaProxyUrl(
+  s: Pick<Sagra, "id" | "locandina">,
+): string | null {
+  const originale = locandinaOriginale(s);
+  if (!originale) return null;
+  return `/locandina/${s.id}?v=${versioneLocandina(originale)}`;
 }
 
 // --- JSON-LD (schema.org/Event) ---

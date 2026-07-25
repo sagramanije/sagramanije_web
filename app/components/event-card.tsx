@@ -2,11 +2,13 @@ import { Calendar, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Sagra } from "../../lib/sagre";
-import { formatIntervallo, locandinaOriginale } from "../../lib/sagre";
+import { formatIntervallo, locandinaProxyUrl } from "../../lib/sagre";
 import StripedPlaceholder from "./striped-placeholder";
 
 // Card di una sagra vera (dall'API), nello stesso stile delle card mockup.
 export default function EventCard({ sagra }: { sagra: Sagra }) {
+  const locandina = locandinaProxyUrl(sagra);
+
   return (
     <Link
       href={`/sagra/${sagra.slug}`}
@@ -14,10 +16,10 @@ export default function EventCard({ sagra }: { sagra: Sagra }) {
     >
       <div className="relative h-28">
         <StripedPlaceholder />
-        {locandinaOriginale(sagra) ? (
-          // Passa dal proxy /locandina/<id>: l'URL d'origine non arriva al browser.
+        {locandina ? (
+          // La versione invalida la cache se l'origine assegna una nuova immagine.
           <Image
-            src={`/locandina/${sagra.id}`}
+            src={locandina}
             alt={`Locandina: ${sagra.nome_sagra}`}
             fill
             sizes="288px"

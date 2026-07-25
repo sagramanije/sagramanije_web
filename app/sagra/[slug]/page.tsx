@@ -12,7 +12,7 @@ import {
   formatIntervallo,
   getSagraBySlug,
   getSagreAbruzzo,
-  locandinaOriginale,
+  locandinaProxyUrl,
   meseDi,
   metaDescrizione,
   paragrafi,
@@ -63,6 +63,7 @@ export default async function SagraPage({ params }: Props) {
 
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const conclusa = eConclusa(sagra);
+  const locandina = locandinaProxyUrl(sagra);
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
   // La descrizione vera dell'evento. Quando manca resta il riassunto dai dati,
@@ -121,10 +122,10 @@ export default async function SagraPage({ params }: Props) {
 
         <div className="relative mt-6 h-64 overflow-hidden rounded-3xl sm:h-80">
           <StripedPlaceholder />
-          {locandinaOriginale(sagra) ? (
-            // Passa dal proxy /locandina/<id>: l'URL d'origine non arriva al browser.
+          {locandina ? (
+            // La versione invalida la cache se l'origine assegna una nuova immagine.
             <Image
-              src={`/locandina/${sagra.id}`}
+              src={locandina}
               alt={`Locandina: ${sagra.nome_sagra}`}
               fill
               sizes="(max-width: 768px) 100vw, 768px"
