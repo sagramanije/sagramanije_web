@@ -1,4 +1,6 @@
+import type { IncomingMessage } from "node:http";
 import sharp from "sharp";
+import { richiediUrlHttpsPubblico } from "../../../lib/public-image-fetch";
 import {
   getSagreAbruzzo,
   locandinaOriginale,
@@ -76,18 +78,16 @@ function varianteRichiesta(req: Request): Variante | null {
 }
 
 async function leggiImmagine(
-  body: ReadableStream<Uint8Array>,
+  body: IncomingMessage,
 ): Promise<Buffer | null> {
-  const reader = body.getReader();
-  const parti: Uint8Array[] = [];
+  const parti: Buffer[] = [];
   let totale = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  for await (const chunk of body) {
+    const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     totale += value.byteLength;
     if (totale > MAX_BYTES_ORIGINALE) {
-      await reader.cancel();
+      body.destroy();
       return null;
     }
     parti.push(value);
@@ -125,32 +125,40 @@ export async function GET(
     return fallbackTrasparente();
   }
 
-  let img: Response;
+  let img: IncomingMessage;
   try {
-    img = await fetch(locandina.url, {
+    img = await richiediUrlHttpsPubblico(locandina.url, {
       headers: { "User-Agent": "Sagramanije/1.0 (+https://sagramanije.it)" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
+      maxRedirects: 3,
+      timeoutMs: 15_000,
     });
   } catch {
     return fallbackTrasparente();
   }
 
-  const contentType = (img.headers.get("content-type") ?? "")
+  const contentTypeRaw = img.headers["content-type"];
+  const contentType = (
+    Array.isArray(contentTypeRaw) ? contentTypeRaw[0] : (contentTypeRaw ?? "")
+  )
     .split(";", 1)[0]
     .trim()
     .toLowerCase();
-  const contentLength = Number(img.headers.get("content-length"));
+  const contentLengthRaw = img.headers["content-length"];
+  const contentLength = Number(
+    Array.isArray(contentLengthRaw) ? contentLengthRaw[0] : contentLengthRaw,
+  );
+  const status = img.statusCode ?? 0;
   if (
-    !img.ok ||
-    !img.body ||
+    status < 200 ||
+    status >= 300 ||
     !CONTENT_TYPE_CONSENTITI.has(contentType) ||
     (Number.isFinite(contentLength) && contentLength > MAX_BYTES_ORIGINALE)
   ) {
+    img.destroy();
     return fallbackTrasparente();
   }
 
-  const originale = await leggiImmagine(img.body);
+  const originale = await leggiImmagine(img);
   if (!originale) return fallbackTrasparente();
 
   let ottimizzata: Buffer;

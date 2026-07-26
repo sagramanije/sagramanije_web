@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import * as z from "zod";
 import archivioJson from "../data/archivio-sagre.json";
+import { normalizzaUrlHttpsPubblico } from "./public-image-fetch";
 
 // Stessa API dell'app mobile (sagramanije/src/services/sagra.service.ts).
 // Qui gira solo lato server: l'URL non finisce mai nel bundle client.
@@ -362,21 +363,6 @@ export function metaDescrizione(s: Sagra): string {
 
 // --- locandine ---
 
-// Host da cui accettiamo di scaricare le locandine (tutto il resto è rifiutato).
-// Nota: alcune immagini di sagr.it non esistono più all'origine (403/404);
-// il proxy in quel caso risponde con un PNG trasparente e la card mostra
-// il placeholder a strisce.
-const HOST_LOCANDINE = new Set([
-  "iltrafiletto.it",
-  "sagr.it",
-  "trovasagre.com",
-  "sagreautentiche.it",
-]);
-
-function hostLocandinaConsentito(host: string): boolean {
-  return HOST_LOCANDINE.has(host) || host.endsWith(".fbcdn.net");
-}
-
 // Revisione mirata della cache per le fonti abilitate dopo che il loro URL era
 // già finito nell'archivio. Cambiarla evita di riusare l'eventuale PNG
 // trasparente memorizzato quando la fonte non era ancora consentita.
@@ -403,9 +389,7 @@ export function locandinaOriginale(s: Pick<Sagra, "locandina">): string | null {
       if (!interno) return null;
       u = new URL(interno, u.origin);
     }
-    const host = u.hostname.replace(/^www\./, "");
-    if (u.protocol !== "https:" || !hostLocandinaConsentito(host)) return null;
-    return u.href;
+    return normalizzaUrlHttpsPubblico(u)?.href ?? null;
   } catch {
     return null;
   }
