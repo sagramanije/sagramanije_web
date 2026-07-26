@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
+    unoptimized: true,
     // Le locandine usano ?v=<hash> per invalidare la cache quando cambia
     // l'immagine originale. Manteniamo esplicitamente anche il marchio locale:
     // quando localPatterns è presente, Next blocca ogni percorso non elencato.
