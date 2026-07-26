@@ -366,7 +366,28 @@ export function metaDescrizione(s: Sagra): string {
 // Nota: alcune immagini di sagr.it non esistono più all'origine (403/404);
 // il proxy in quel caso risponde con un PNG trasparente e la card mostra
 // il placeholder a strisce.
-const HOST_LOCANDINE = new Set(["sagr.it", "trovasagre.com", "sagreautentiche.it"]);
+const HOST_LOCANDINE = new Set([
+  "iltrafiletto.it",
+  "sagr.it",
+  "trovasagre.com",
+  "sagreautentiche.it",
+]);
+
+function hostLocandinaConsentito(host: string): boolean {
+  return HOST_LOCANDINE.has(host) || host.endsWith(".fbcdn.net");
+}
+
+// Revisione mirata della cache per le fonti abilitate dopo che il loro URL era
+// già finito nell'archivio. Cambiarla evita di riusare l'eventuale PNG
+// trasparente memorizzato quando la fonte non era ancora consentita.
+const REVISIONE_CACHE_LOCANDINE: Partial<Record<string, string>> = {
+  "iltrafiletto.it": "1",
+};
+
+function revisioneCacheLocandina(host: string): string | undefined {
+  if (host.endsWith(".fbcdn.net")) return "1";
+  return REVISIONE_CACHE_LOCANDINE[host];
+}
 
 /**
  * URL diretto della locandina, o null se assente/non affidabile.
@@ -383,7 +404,7 @@ export function locandinaOriginale(s: Pick<Sagra, "locandina">): string | null {
       u = new URL(interno, u.origin);
     }
     const host = u.hostname.replace(/^www\./, "");
-    if (u.protocol !== "https:" || !HOST_LOCANDINE.has(host)) return null;
+    if (u.protocol !== "https:" || !hostLocandinaConsentito(host)) return null;
     return u.href;
   } catch {
     return null;
@@ -392,7 +413,10 @@ export function locandinaOriginale(s: Pick<Sagra, "locandina">): string | null {
 
 /** Versione corta e deterministica usata esclusivamente come chiave di cache. */
 export function versioneLocandina(originale: string): string {
-  return createHash("sha256").update(originale).digest("hex").slice(0, 12);
+  const host = new URL(originale).hostname.replace(/^www\./, "");
+  const revisione = revisioneCacheLocandina(host);
+  const chiave = revisione ? `${originale}\0${revisione}` : originale;
+  return createHash("sha256").update(chiave).digest("hex").slice(0, 12);
 }
 
 /**
