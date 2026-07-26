@@ -63,7 +63,7 @@ export default async function SagraPage({ params }: Props) {
 
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const conclusa = eConclusa(sagra);
-  const locandina = locandinaProxyUrl(sagra);
+  const locandina = locandinaProxyUrl(sagra, "detail");
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
   // La descrizione vera dell'evento. Quando manca resta il riassunto dai dati,

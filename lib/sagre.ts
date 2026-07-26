@@ -422,17 +422,20 @@ export function versioneLocandina(originale: string): string {
 /**
  * URL pubblico e versionato della locandina.
  *
- * Il proxy resta identificato dall'id della sagra, mentre la versione cambia
- * quando cambia l'URL originale. In questo modo sia la CDN sia `next/image`
- * usano una nuova chiave di cache e non continuano a mostrare la locandina
- * precedente.
+ * Il proxy resta identificato dall'id della sagra e genera soltanto due
+ * varianti consentite. La versione cambia quando cambia l'URL originale:
+ * in questo modo la CDN usa una nuova chiave di cache senza ricorrere
+ * all'Image Optimization di Vercel.
  */
+export type VarianteLocandina = "card" | "detail";
+
 export function locandinaProxyUrl(
   s: Pick<Sagra, "id" | "locandina">,
+  variante: VarianteLocandina,
 ): string | null {
   const originale = locandinaOriginale(s);
   if (!originale) return null;
-  return `/locandina/${s.id}?v=${versioneLocandina(originale)}`;
+  return `/locandina/${s.id}?v=${versioneLocandina(originale)}&variant=${variante}`;
 }
 
 // --- JSON-LD (schema.org/Event) ---

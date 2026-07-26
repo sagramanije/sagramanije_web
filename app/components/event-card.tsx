@@ -7,7 +7,7 @@ import StripedPlaceholder from "./striped-placeholder";
 
 // Card di una sagra vera (dall'API), nello stesso stile delle card mockup.
 export default function EventCard({ sagra }: { sagra: Sagra }) {
-  const locandina = locandinaProxyUrl(sagra);
+  const locandina = locandinaProxyUrl(sagra, "card");
 
   return (
     <Link

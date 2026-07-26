@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
+    // Le locandine vengono già ridimensionate e convertite in WebP dalla
+    // Route Handler /locandina. Così il loader predefinito non consuma
+    // Image Transformations su Vercel, nemmeno per il piccolo logo.
     unoptimized: true,
     // Le locandine usano ?v=<hash> per invalidare la cache quando cambia
     // l'immagine originale. Manteniamo esplicitamente anche il marchio locale:
