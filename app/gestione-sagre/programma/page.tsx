@@ -46,8 +46,7 @@ async function getSagrePerProgramma(): Promise<SagraProgramma[]> {
         WHEN COALESCE(data_fine, data_inizio) >= CURDATE() THEN data_inizio
       END ASC,
       data_inizio DESC,
-      nome_sagra ASC
-    LIMIT 500`,
+      nome_sagra ASC`,
   );
 
   return righe.map((riga) => ({
