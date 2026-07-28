@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import StripedPlaceholder from "../../components/striped-placeholder";
+import ProgrammaSagra from "../../components/programma-sagra";
 import Image from "next/image";
 import {
   eConclusa,
@@ -18,6 +19,7 @@ import {
   paragrafi,
   riassunto,
 } from "../../../lib/sagre";
+import { getProgrammaSagra } from "../../../lib/programma";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 
 export const revalidate = 21_600;
@@ -60,6 +62,7 @@ export default async function SagraPage({ params }: Props) {
   const { slug } = await params;
   const sagra = await getSagraBySlug(slug);
   if (!sagra) notFound();
+  const programma = await getProgrammaSagra(sagra.id);
 
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const conclusa = eConclusa(sagra);
@@ -178,6 +181,8 @@ export default async function SagraPage({ params }: Props) {
         ) : (
           <p className="mt-6 text-lg leading-relaxed text-muted">{riassunto(sagra)}</p>
         )}
+
+        <ProgrammaSagra giorni={programma} />
 
         <div className="mt-8 flex flex-wrap gap-4">
           <div className="rounded-3xl bg-surface p-5">
