@@ -79,6 +79,7 @@ export default function ProgrammaForm({
   const [idSagra, setIdSagra] = useState(sagre[0]?.id ?? 0);
   const [ricercaSagra, setRicercaSagra] = useState("");
   const [programma, setProgramma] = useState<ProgrammaAdmin | null>(null);
+  const [mostraDescrizioni, setMostraDescrizioni] = useState(false);
   const [caricamentoProgramma, avviaCaricamentoProgramma] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -231,7 +232,7 @@ export default function ProgrammaForm({
         aria-labelledby="programma-esistente"
         className="border-t border-beige pt-7"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2
               id="programma-esistente"
@@ -246,12 +247,37 @@ export default function ProgrammaForm({
                       ? "attività presente"
                       : "attività presenti"
                   }`
-                : "Controlla le attività presenti prima di aggiungerne altre."}
+              : "Controlla le attività presenti prima di aggiungerne altre."}
             </p>
           </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary-ink">
-            <CalendarDays aria-hidden size={20} />
-          </span>
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="mostra-descrizioni"
+              className="cursor-pointer text-sm font-bold"
+            >
+              Mostra descrizioni
+            </label>
+            <button
+              id="mostra-descrizioni"
+              type="button"
+              role="switch"
+              aria-checked={mostraDescrizioni}
+              onClick={() => setMostraDescrizioni((valore) => !valore)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+                mostraDescrizioni ? "bg-primary" : "bg-beige"
+              }`}
+            >
+              <span
+                aria-hidden
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${
+                  mostraDescrizioni ? "left-6" : "left-1"
+                }`}
+              />
+            </button>
+            <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary-ink sm:flex">
+              <CalendarDays aria-hidden size={20} />
+            </span>
+          </div>
         </div>
 
         {caricamentoProgramma ? (
@@ -292,7 +318,7 @@ export default function ProgrammaForm({
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold leading-snug">{voce.titolo}</p>
-                        {voce.descrizione ? (
+                        {voce.descrizione && mostraDescrizioni ? (
                           <p className="mt-1 text-sm leading-relaxed text-muted">
                             {voce.descrizione}
                           </p>
