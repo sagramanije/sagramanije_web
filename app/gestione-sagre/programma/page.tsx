@@ -37,6 +37,7 @@ async function getSagrePerProgramma(): Promise<SagraProgramma[]> {
       DATE_FORMAT(data_inizio, '%Y-%m-%d') AS data_inizio,
       DATE_FORMAT(data_fine, '%Y-%m-%d') AS data_fine
     FROM sagre
+    where regione = 'Abruzzo'
     ORDER BY
       CASE
         WHEN COALESCE(data_fine, data_inizio) >= CURDATE() THEN 0
