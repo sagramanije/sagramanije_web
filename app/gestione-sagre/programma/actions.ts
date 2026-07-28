@@ -11,9 +11,32 @@ export type StatoProgramma = {
   salvataggio?: number;
 };
 
+export type AttivitaProgrammaAdmin = {
+  id: number;
+  giorno: string | null;
+  oraInizio: string | null;
+  oraFine: string | null;
+  titolo: string;
+  descrizione: string | null;
+};
+
+export type ProgrammaAdmin = {
+  attivita: AttivitaProgrammaAdmin[];
+  errore?: string;
+};
+
 type SagraDb = RowDataPacket & {
   data_inizio: string | null;
   data_fine: string | null;
+};
+
+type AttivitaDb = RowDataPacket & {
+  id: number;
+  giorno: string | null;
+  ora_inizio: string | null;
+  ora_fine: string | null;
+  titolo: string;
+  descrizione: string | null;
 };
 
 type VoceProgramma = {
@@ -105,6 +128,55 @@ function leggiVoci(formData: FormData): VoceProgramma[] {
       descrizione: testo(formData, `descrizione_${indice}`, 20_000),
     };
   });
+}
+
+export async function caricaProgramma(
+  idSagra: number,
+): Promise<ProgrammaAdmin> {
+  if (!(await sessioneAdminValida())) {
+    return {
+      attivita: [],
+      errore: "La sessione è scaduta. Ricarica la pagina ed effettua l’accesso.",
+    };
+  }
+  if (!Number.isInteger(idSagra) || idSagra <= 0) {
+    return { attivita: [], errore: "La sagra selezionata non è valida." };
+  }
+
+  try {
+    const [righe] = await conConnessioneDb((connessione) =>
+      connessione.execute<AttivitaDb[]>(
+        `SELECT
+          id,
+          DATE_FORMAT(giorno, '%Y-%m-%d') AS giorno,
+          TIME_FORMAT(ora_inizio, '%H:%i') AS ora_inizio,
+          TIME_FORMAT(ora_fine, '%H:%i') AS ora_fine,
+          titolo,
+          descrizione
+        FROM attivita
+        WHERE id_sagra = ?
+        ORDER BY giorno ASC, ora_inizio ASC, id ASC`,
+        [idSagra],
+      ),
+    );
+
+    return {
+      attivita: righe.map((riga) => ({
+        id: riga.id,
+        giorno: riga.giorno,
+        oraInizio: riga.ora_inizio,
+        oraFine: riga.ora_fine,
+        titolo: riga.titolo,
+        descrizione: riga.descrizione,
+      })),
+    };
+  } catch (errore) {
+    console.error("Lettura programma fallita", errore);
+    return {
+      attivita: [],
+      errore: "Non è stato possibile caricare il programma già inserito.",
+    };
+  }
 }
 
 export async function salvaProgramma(

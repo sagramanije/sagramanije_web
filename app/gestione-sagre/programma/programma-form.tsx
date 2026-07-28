@@ -1,15 +1,28 @@
 "use client";
 
 import {
+  CalendarDays,
   CalendarPlus,
   GripVertical,
   Plus,
   Search,
   Trash2,
 } from "lucide-react";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import SubmitButton from "../submit-button";
-import { salvaProgramma, type StatoProgramma } from "./actions";
+import {
+  caricaProgramma,
+  salvaProgramma,
+  type ProgrammaAdmin,
+  type StatoProgramma,
+} from "./actions";
 
 export type SagraProgramma = {
   id: number;
@@ -42,6 +55,19 @@ function normalizzaRicerca(valore: string): string {
     .toLowerCase();
 }
 
+function formattaGiorno(giorno: string | null): string {
+  if (!giorno) return "Giorno da definire";
+  const data = new Date(`${giorno}T00:00:00`);
+  if (Number.isNaN(data.getTime())) return giorno;
+  const testo = data.toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return testo.charAt(0).toUpperCase() + testo.slice(1);
+}
+
 export default function ProgrammaForm({
   sagre,
 }: {
@@ -52,6 +78,8 @@ export default function ProgrammaForm({
   const [prossimaChiave, setProssimaChiave] = useState(2);
   const [idSagra, setIdSagra] = useState(sagre[0]?.id ?? 0);
   const [ricercaSagra, setRicercaSagra] = useState("");
+  const [programma, setProgramma] = useState<ProgrammaAdmin | null>(null);
+  const [caricamentoProgramma, avviaCaricamentoProgramma] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
   const sagraSelezionata = useMemo(
@@ -76,12 +104,34 @@ export default function ProgrammaForm({
     }
     return risultati;
   }, [ricercaSagra, sagraSelezionata, sagre]);
+  const programmaPerGiorno = useMemo(() => {
+    const gruppi = new Map<string, ProgrammaAdmin["attivita"]>();
+    for (const attivita of programma?.attivita ?? []) {
+      const chiave = attivita.giorno ?? "";
+      const gruppo = gruppi.get(chiave) ?? [];
+      gruppo.push(attivita);
+      gruppi.set(chiave, gruppo);
+    }
+    return [...gruppi.entries()];
+  }, [programma]);
 
   useEffect(() => {
     if (stato.esito === "successo") {
       formRef.current?.reset();
     }
   }, [stato.esito, stato.salvataggio]);
+
+  useEffect(() => {
+    if (!idSagra) return;
+    let annullato = false;
+    avviaCaricamentoProgramma(async () => {
+      const risultato = await caricaProgramma(idSagra);
+      if (!annullato) setProgramma(risultato);
+    });
+    return () => {
+      annullato = true;
+    };
+  }, [idSagra, stato.salvataggio]);
 
   function aggiungiRiga() {
     if (righe.length >= 50) return;
@@ -176,6 +226,86 @@ export default function ProgrammaForm({
           </p>
         ) : null}
       </div>
+
+      <section
+        aria-labelledby="programma-esistente"
+        className="border-t border-beige pt-7"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2
+              id="programma-esistente"
+              className="font-title text-xl"
+            >
+              Programma già inserito
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              {programma?.attivita.length
+                ? `${programma.attivita.length} ${
+                    programma.attivita.length === 1
+                      ? "attività presente"
+                      : "attività presenti"
+                  }`
+                : "Controlla le attività presenti prima di aggiungerne altre."}
+            </p>
+          </div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary-ink">
+            <CalendarDays aria-hidden size={20} />
+          </span>
+        </div>
+
+        {caricamentoProgramma ? (
+          <p role="status" className="mt-4 text-sm text-muted">
+            Caricamento programma…
+          </p>
+        ) : programma?.errore ? (
+          <p
+            role="alert"
+            className="mt-4 rounded-2xl bg-primary/10 px-4 py-3 text-sm font-semibold text-primary-ink"
+          >
+            {programma.errore}
+          </p>
+        ) : programma && programma.attivita.length === 0 ? (
+          <p className="mt-4 rounded-2xl border border-dashed border-beige px-4 py-5 text-sm text-muted">
+            Questa sagra non ha ancora un programma.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-5">
+            {programmaPerGiorno.map(([giorno, attivita]) => (
+              <div key={giorno || "senza-data"}>
+                <h3 className="font-title text-lg">
+                  {formattaGiorno(giorno || null)}
+                </h3>
+                <ol className="mt-2 overflow-hidden rounded-2xl border border-beige bg-white px-4">
+                  {attivita.map((voce) => (
+                    <li
+                      key={voce.id}
+                      className="grid grid-cols-[4rem_1fr] gap-3 border-b border-beige py-3 last:border-b-0"
+                    >
+                      <div className="text-right text-sm font-bold">
+                        <p className="text-primary-ink">
+                          {voce.oraInizio ?? "—"}
+                        </p>
+                        {voce.oraFine ? (
+                          <p className="text-muted">{voce.oraFine}</p>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold leading-snug">{voce.titolo}</p>
+                        {voce.descrizione ? (
+                          <p className="mt-1 text-sm leading-relaxed text-muted">
+                            {voce.descrizione}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <input
         type="hidden"
