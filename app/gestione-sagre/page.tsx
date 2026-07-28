@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { LockKeyhole, LogOut, Plus } from "lucide-react";
+import { ClipboardCheck, LockKeyhole, LogOut, Plus } from "lucide-react";
 import { connection } from "next/server";
+import Link from "next/link";
 import { sessioneAdminValida } from "../../lib/admin-auth";
+import { contaSagrePreProd } from "../../lib/sagre-pre-prod";
 import { Wordmark } from "../components/wordmark";
 import { esci } from "./actions";
 import LoginForm from "./login-form";
@@ -42,6 +44,8 @@ export default async function GestioneSagrePage() {
     );
   }
 
+  const daRevisionare = await contaSagrePreProd();
+
   return (
     <main className="min-h-svh px-4 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-4xl">
@@ -74,7 +78,29 @@ export default async function GestioneSagrePage() {
           </form>
         </header>
 
-        <section className="mt-7 rounded-3xl bg-surface p-4 shadow-sm sm:mt-10 sm:p-8">
+        <Link
+          href="/gestione-sagre/revisione"
+          className="mt-7 flex items-center justify-between gap-4 rounded-3xl bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 sm:p-6"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ClipboardCheck aria-hidden size={22} />
+            </span>
+            <div>
+              <p className="font-title text-lg">Revisione bozze</p>
+              <p className="mt-0.5 text-sm text-muted">
+                Convalida i dati importati in sagre_pre_prod prima che finiscano in sagre.
+              </p>
+            </div>
+          </div>
+          {daRevisionare > 0 ? (
+            <span className="shrink-0 rounded-full bg-primary px-3 py-1 text-sm font-bold text-white">
+              {daRevisionare}
+            </span>
+          ) : null}
+        </Link>
+
+        <section className="mt-7 rounded-3xl bg-surface p-4 shadow-sm sm:p-8">
           <SagraForm />
         </section>
       </div>
