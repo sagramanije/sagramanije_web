@@ -1,6 +1,12 @@
 "use client";
 
-import { CalendarPlus, GripVertical, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarPlus,
+  GripVertical,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import SubmitButton from "../submit-button";
 import { salvaProgramma, type StatoProgramma } from "./actions";
@@ -29,6 +35,13 @@ function descrizioneSagra(sagra: SagraProgramma): string {
   return `${sagra.nome} — ${sagra.citta} · ${date}`;
 }
 
+function normalizzaRicerca(valore: string): string {
+  return valore
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export default function ProgrammaForm({
   sagre,
 }: {
@@ -38,12 +51,31 @@ export default function ProgrammaForm({
   const [righe, setRighe] = useState<Riga[]>([{ chiave: 1 }]);
   const [prossimaChiave, setProssimaChiave] = useState(2);
   const [idSagra, setIdSagra] = useState(sagre[0]?.id ?? 0);
+  const [ricercaSagra, setRicercaSagra] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const sagraSelezionata = useMemo(
     () => sagre.find((sagra) => sagra.id === idSagra),
     [idSagra, sagre],
   );
+  const sagreFiltrate = useMemo(() => {
+    const query = normalizzaRicerca(ricercaSagra.trim());
+    if (!query) return sagre;
+
+    const risultati = sagre.filter((sagra) =>
+      normalizzaRicerca(
+        `${sagra.nome} ${sagra.citta} ${sagra.id}`,
+      ).includes(query),
+    );
+
+    if (
+      sagraSelezionata &&
+      !risultati.some((sagra) => sagra.id === sagraSelezionata.id)
+    ) {
+      return [sagraSelezionata, ...risultati];
+    }
+    return risultati;
+  }, [ricercaSagra, sagraSelezionata, sagre]);
 
   useEffect(() => {
     if (stato.esito === "successo") {
@@ -81,6 +113,40 @@ export default function ProgrammaForm({
       ) : null}
 
       <div>
+        <label htmlFor="ricerca_sagra" className={LABEL}>
+          Cerca una sagra
+        </label>
+        <div className="relative mt-2">
+          <Search
+            aria-hidden
+            size={18}
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <input
+            id="ricerca_sagra"
+            type="search"
+            value={ricercaSagra}
+            onChange={(evento) => setRicercaSagra(evento.target.value)}
+            placeholder="Nome, città o ID…"
+            autoComplete="off"
+            className="min-h-12 w-full rounded-2xl border border-beige bg-white py-3 pl-11 pr-4 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+          />
+        </div>
+        {ricercaSagra.trim() ? (
+          <p className="mt-2 text-xs text-muted">
+            {sagreFiltrate.length -
+              (sagraSelezionata &&
+              !normalizzaRicerca(
+                `${sagraSelezionata.nome} ${sagraSelezionata.citta} ${sagraSelezionata.id}`,
+              ).includes(normalizzaRicerca(ricercaSagra.trim()))
+                ? 1
+                : 0)}{" "}
+            risultati trovati
+          </p>
+        ) : null}
+      </div>
+
+      <div>
         <label htmlFor="id_sagra" className={LABEL}>
           Sagra *
         </label>
@@ -95,7 +161,7 @@ export default function ProgrammaForm({
           {sagre.length === 0 ? (
             <option value="">Nessuna sagra disponibile</option>
           ) : null}
-          {sagre.map((sagra) => (
+          {sagreFiltrate.map((sagra) => (
             <option key={sagra.id} value={sagra.id}>
               {descrizioneSagra(sagra)}
             </option>
