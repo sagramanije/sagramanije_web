@@ -23,7 +23,13 @@ export type SagraPreProd = {
 
 export type SagraPreProdRiga = Pick<
   SagraPreProd,
-  "id" | "nome_sagra" | "citta" | "provincia" | "data_inizio" | "data_fine"
+  | "id"
+  | "nome_sagra"
+  | "citta"
+  | "provincia"
+  | "data_inizio"
+  | "data_fine"
+  | "verifica_data_esito"
 >;
 
 // data_inizio/data_fine sono colonne DATE: senza DATE_FORMAT, mysql2 le
