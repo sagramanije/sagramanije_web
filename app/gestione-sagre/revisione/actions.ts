@@ -120,3 +120,46 @@ export async function convalidaSagra(
 
   redirect("/gestione-sagre/revisione");
 }
+
+/** Elimina una bozza da sagre_pre_prod senza trasferirla in sagre. */
+export async function eliminaBozza(
+  _stato: StatoAzione,
+  formData: FormData,
+): Promise<StatoAzione> {
+  if (!(await sessioneAdminValida())) {
+    return {
+      esito: "errore",
+      messaggio: "La sessione è scaduta. Ricarica la pagina ed effettua l’accesso.",
+    };
+  }
+
+  const preProdId = Number(formData.get("pre_prod_id"));
+  if (!Number.isInteger(preProdId) || preProdId <= 0) {
+    return { esito: "errore", messaggio: "Bozza non valida." };
+  }
+
+  try {
+    const [risultato] = await conConnessioneDb((connessione) =>
+      connessione.execute<ResultSetHeader>(
+        "DELETE FROM sagre_pre_prod WHERE id = ?",
+        [preProdId],
+      ),
+    );
+    if (risultato.affectedRows === 0) {
+      return {
+        esito: "errore",
+        messaggio:
+          "La bozza risulta già rimossa: forse eliminata da un'altra sessione.",
+      };
+    }
+  } catch (errore) {
+    console.error("Eliminazione bozza fallita", errore);
+    return {
+      esito: "errore",
+      messaggio:
+        "Il database non ha accettato l'eliminazione. Riprova o controlla i log.",
+    };
+  }
+
+  redirect("/gestione-sagre/revisione");
+}

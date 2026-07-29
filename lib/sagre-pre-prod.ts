@@ -52,7 +52,6 @@ export async function getSagrePreProd(): Promise<SagraPreProdRiga[]> {
         SELECT 1 FROM sagre s
         WHERE LOWER(TRIM(s.nome_sagra)) = LOWER(TRIM(p.nome_sagra))
           AND LOWER(TRIM(s.citta)) = LOWER(TRIM(p.citta))
-          AND s.data_inizio <=> p.data_inizio
       ) AS gia_presente
      FROM sagre_pre_prod p
      ORDER BY p.data_inizio IS NULL, p.data_inizio ASC`,

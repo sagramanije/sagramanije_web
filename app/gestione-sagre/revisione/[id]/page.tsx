@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { sessioneAdminValida } from "../../../../lib/admin-auth";
 import { getSagraPreProdById } from "../../../../lib/sagre-pre-prod";
 import { Wordmark } from "../../../components/wordmark";
+import EliminaBozzaButton from "./elimina-bozza-button";
 import RevisioneForm from "./revisione-form";
 
 export const metadata: Metadata = {
@@ -40,13 +41,19 @@ export default async function RevisioneSagraPage({ params }: Props) {
       <div className="mx-auto w-full max-w-4xl">
         <header>
           <Wordmark />
-          <Link
-            href="/gestione-sagre/revisione"
-            className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-muted hover:text-ink"
-          >
-            <ArrowLeft aria-hidden size={16} />
-            Revisione bozze
-          </Link>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+            <Link
+              href="/gestione-sagre/revisione"
+              className="inline-flex items-center gap-1.5 text-sm font-bold text-muted hover:text-ink"
+            >
+              <ArrowLeft aria-hidden size={16} />
+              Revisione bozze
+            </Link>
+            <EliminaBozzaButton
+              preProdId={bozza.id}
+              nomeSagra={bozza.nome_sagra}
+            />
+          </div>
           <h1 className="mt-2 font-title text-3xl leading-tight sm:text-4xl">
             {bozza.nome_sagra}
           </h1>
