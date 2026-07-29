@@ -30,21 +30,43 @@ export type SagraPreProdRiga = Pick<
   | "data_inizio"
   | "data_fine"
   | "verifica_data_esito"
->;
+> & {
+  /** True se in sagre esiste già una riga con stesso nome, città e data_inizio. */
+  gia_presente: boolean;
+};
 
 // data_inizio/data_fine sono colonne DATE: senza DATE_FORMAT, mysql2 le
 // restituisce come Date locali che JSON.stringify sposta di fuso in UTC.
 const COLONNE_DATA =
   "DATE_FORMAT(data_inizio, '%Y-%m-%d') AS data_inizio, DATE_FORMAT(data_fine, '%Y-%m-%d') AS data_fine";
 
+type RigaPreProdGrezza = Omit<SagraPreProdRiga, "gia_presente"> & {
+  gia_presente: number;
+};
+
 /** Tutte le bozze in attesa di revisione, dalla più vicina alla più lontana. */
 export async function getSagrePreProd(): Promise<SagraPreProdRiga[]> {
-  const [righe] = await db().query<(SagraPreProdRiga & RowDataPacket)[]>(
-    `SELECT id, nome_sagra, citta, provincia, ${COLONNE_DATA},verifica_data_esito
-     FROM sagre_pre_prod
-     ORDER BY data_inizio IS NULL, data_inizio ASC`,
+  const [righe] = await db().query<(RigaPreProdGrezza & RowDataPacket)[]>(
+    `SELECT p.id, p.nome_sagra, p.citta, p.provincia, ${COLONNE_DATA}, p.verifica_data_esito,
+      EXISTS (
+        SELECT 1 FROM sagre s
+        WHERE LOWER(TRIM(s.nome_sagra)) = LOWER(TRIM(p.nome_sagra))
+          AND LOWER(TRIM(s.citta)) = LOWER(TRIM(p.citta))
+          AND s.data_inizio <=> p.data_inizio
+      ) AS gia_presente
+     FROM sagre_pre_prod p
+     ORDER BY p.data_inizio IS NULL, p.data_inizio ASC`,
   );
-  return righe;
+  return righe.map((riga) => ({
+    id: riga.id,
+    nome_sagra: riga.nome_sagra,
+    citta: riga.citta,
+    provincia: riga.provincia,
+    data_inizio: riga.data_inizio,
+    data_fine: riga.data_fine,
+    verifica_data_esito: riga.verifica_data_esito,
+    gia_presente: Boolean(riga.gia_presente),
+  }));
 }
 
 export async function contaSagrePreProd(): Promise<number> {

@@ -58,7 +58,14 @@ export default function ListaRevisione({ righe }: { righe: SagraPreProdRiga[] })
               className="flex items-center justify-between gap-4 rounded-2xl bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 sm:p-5"
             >
               <div className="min-w-0">
-                <p className="truncate font-title text-lg">{r.nome_sagra}</p>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="truncate font-title text-lg">{r.nome_sagra}</span>
+                  {r.gia_presente ? (
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary-ink">
+                      Già presente in sagre
+                    </span>
+                  ) : null}
+                </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
                   <span className="flex items-center gap-1.5">
                     <MapPin aria-hidden size={15} />
