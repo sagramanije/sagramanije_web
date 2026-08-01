@@ -1,5 +1,5 @@
 import { SAGRE_DEMO } from "../data";
-import { MockHeader, MockSearch, MockSlider, MockSwitcher, MockTabBar } from "./mock-chrome";
+import { MockFilters, MockHeader, MockSearch, MockSwitcher, MockTabBar } from "./mock-chrome";
 import { StatusBar } from "./phone-frame";
 import SagraCard from "./sagra-card";
 
@@ -11,9 +11,9 @@ export default function MockList() {
         <MockHeader />
         <div className="mt-4">
           <MockSearch />
-          <MockSlider />
+          <MockFilters />
         </div>
-        <div className="my-4 flex items-center justify-between">
+        <div className="my-3 flex items-center justify-between">
           <span className="text-[11px] font-bold">
             <span className="text-primary-ink">12</span> sagre vicine
           </span>

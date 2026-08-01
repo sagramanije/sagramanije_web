@@ -118,8 +118,8 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-6">
             <h2 className="font-title text-3xl sm:text-4xl">Le schermate</h2>
             <p className="mt-3 max-w-xl text-muted">
-              Dalla lista delle sagre vicine alla mappa con i gruppi di eventi,
-              fino al programma ora per ora e alle indicazioni per arrivarci.
+              Filtra le sagre per periodo e distanza, esplora la mappa, apri le
+              locandine e consulta il programma ora per ora.
             </p>
           </div>
 

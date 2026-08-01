@@ -19,8 +19,8 @@ function PlayGlyph() {
   );
 }
 
-// Finché lo store non ha dato il link definitivo (href "#") la badge non è un
-// link: resta lì a dire "prossimamente", senza portare da nessuna parte.
+// Finché uno store non ha dato il link definitivo (href "#") la relativa badge
+// non è un link: resta lì a dire "prossimamente", senza portare da nessuna parte.
 function Badge({
   href,
   name,
@@ -51,6 +51,8 @@ function Badge({
   return (
     <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       className={`${base} transition-transform hover:-translate-y-0.5`}
     >
       {content}

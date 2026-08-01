@@ -1,6 +1,6 @@
 import { Calendar, MapPin, Navigation, X } from "lucide-react";
 import { SAGRA_DETTAGLIO } from "../data";
-import { MockHeader, MockSwitcher, MockTabBar } from "./mock-chrome";
+import { MockFilters, MockHeader, MockSearch, MockSwitcher, MockTabBar } from "./mock-chrome";
 import { PinMark } from "./wordmark";
 import { StatusBar } from "./phone-frame";
 
@@ -60,7 +60,11 @@ export default function MockMap() {
     <div className="flex h-full flex-col">
       <StatusBar />
       <div className="px-5 pt-3">
-        <MockHeader withTitle={false} />
+        <MockHeader />
+        <div className="mt-3">
+          <MockSearch />
+          <MockFilters activeDate="weekend" distance={25} scrolled />
+        </div>
         <div className="my-3 flex items-center justify-between">
           <span className="text-[11px] font-bold">
             <span className="text-primary-ink">12</span> sagre vicine

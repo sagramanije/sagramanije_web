@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "it.sagramanije.app",
+      "sha256_cert_fingerprints": [
+        "21:C8:92:CE:D2:8A:59:7D:4D:ED:D4:36:16:F5:B4:88:0E:8E:ED:CB:24:D6:FB:FA:35:8B:74:5A:28:1C:EA:61"
+      ]
+    }
+  }
+]

@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { APP_STORE_URL } from "../data";
+import { APP_STORE_URL, PLAY_STORE_URL } from "../data";
 import { Wordmark } from "./wordmark";
+
+const DOWNLOAD_URL = APP_STORE_URL === "#" ? PLAY_STORE_URL : APP_STORE_URL;
 
 export default function SiteNav() {
   return (
@@ -33,14 +35,14 @@ export default function SiteNav() {
               </Link>
             </li>
           </ul>
-          {/* Finché gli store non danno i link, la CTA non può promettere un
-              download: rimanda alle badge "prossimamente" in cima alla home. */}
-          <Link
-            href={APP_STORE_URL === "#" ? "/#top" : APP_STORE_URL}
+          <a
+            href={DOWNLOAD_URL === "#" ? "/#top" : DOWNLOAD_URL}
+            target={DOWNLOAD_URL === "#" ? undefined : "_blank"}
+            rel={DOWNLOAD_URL === "#" ? undefined : "noopener noreferrer"}
             className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
           >
-            {APP_STORE_URL === "#" ? "App in arrivo" : "Scarica l'app"}
-          </Link>
+            {DOWNLOAD_URL === "#" ? "App in arrivo" : "Scarica l'app"}
+          </a>
         </div>
       </nav>
     </header>

@@ -19,6 +19,13 @@ export default function MockProgramma() {
         </div>
       </div>
 
+      <div className="mx-5 mt-4 flex items-center justify-between rounded-2xl bg-surface px-4 py-3">
+        <span className="text-[11px] font-bold">Mostra descrizioni</span>
+        <span className="relative h-5 w-9 rounded-full bg-primary">
+          <span className="absolute right-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow" />
+        </span>
+      </div>
+
       {/* l'ultima giornata resta tagliata dal bordo: la lista continua */}
       <div className="flex-1 overflow-hidden px-5">
         {PROGRAMMA_DEMO.map((giorno) => (

@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, ChevronRight, MapPin } from "lucide-react";
+import { ArrowLeft, Calendar, ChevronRight, Expand, MapPin } from "lucide-react";
 import { SAGRA_DETTAGLIO } from "../data";
 import { MapCanvas } from "./mock-map";
 import StripedPlaceholder from "./striped-placeholder";
@@ -16,6 +16,9 @@ export default function MockDetail() {
         <div className="absolute inset-0 bg-black/15" />
         <span className="absolute left-4 top-14 flex h-9 w-9 items-center justify-center rounded-full bg-surface/90">
           <ArrowLeft size={18} />
+        </span>
+        <span className="absolute right-4 top-14 flex h-9 w-9 items-center justify-center rounded-2xl bg-black/55 text-white">
+          <Expand size={18} />
         </span>
       </div>
 

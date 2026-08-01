@@ -1,4 +1,12 @@
-import { Info, MapPin, Search, UtensilsCrossed } from "lucide-react";
+import {
+  CalendarDays,
+  Info,
+  MapPin,
+  PartyPopper,
+  Search,
+  SlidersHorizontal,
+  UtensilsCrossed,
+} from "lucide-react";
 
 export function MockHeader({ withTitle = true }: { withTitle?: boolean }) {
   return (
@@ -8,9 +16,14 @@ export function MockHeader({ withTitle = true }: { withTitle?: boolean }) {
         Sulmona, AQ
       </p>
       {withTitle ? (
-        <h3 className="mt-0.5 font-title text-[26px] leading-tight">
-          Trova la tua sagra
-        </h3>
+        <div className="mt-0.5 flex items-center justify-between">
+          <h3 className="font-title text-[26px] leading-tight">
+            Trova la tua sagra
+          </h3>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface">
+            <Info size={15} className="text-muted" />
+          </span>
+        </div>
       ) : null}
     </div>
   );
@@ -27,68 +40,53 @@ export function MockSearch() {
   );
 }
 
-// Il filtro distanza dell'app è uno spiedino di arrosticino: lo stecco è la
-// traccia, i cubetti sono le tacche da 5 km. Cotti (arancioni) fino a quello
-// selezionato, crudi dopo; l'ultimo è il grasso e vale "illimitato".
-// Vedi src/components/index/distance-filter.tsx.
-const SKEWER = {
-  stick: "#c69963",
-  stickShade: "#a97c4f",
-  rawMeat: "#f0c8b4",
-  fat: "#f5e6cd",
-} as const;
+// Dalla 1.2.1 periodo e distanza sono chip orizzontali. Lo spiedino per il
+// raggio compare nel foglio modale solo dopo il tap su "Distanza".
+export function MockFilters({
+  activeDate = "all",
+  distance,
+  scrolled = false,
+}: {
+  activeDate?: "all" | "today" | "weekend";
+  distance?: number;
+  scrolled?: boolean;
+}) {
+  const options = [
+    { value: "all", label: "Tutte", Icon: UtensilsCrossed },
+    { value: "today", label: "Oggi", Icon: CalendarDays },
+    { value: "weekend", label: "Weekend", Icon: PartyPopper },
+  ] as const;
 
-const CUBE_COUNT = 11; // da 5 km a 50 km con passo 5, più la tacca "illimitato"
-const SELECTED = 4; // 25 km
-// inclinazioni fisse per indice: i cubetti veri non sono mai allineati
-const tilt = (i: number) => ((i * 37) % 15) - 7;
-
-export function MockSlider() {
   return (
-    <div className="mt-4">
-      <div className="relative flex h-7 items-center">
-        <div className="h-[5px] w-full rounded-full" style={{ backgroundColor: SKEWER.stick }} />
-        <div
-          className="absolute h-[5px] rounded-full"
-          style={{ width: `${(SELECTED / (CUBE_COUNT - 1)) * 100}%`, backgroundColor: SKEWER.stickShade }}
-        />
-        {Array.from({ length: CUBE_COUNT }, (_, i) => {
-          const isSelected = i === SELECTED;
-          const isCooked = i <= SELECTED;
-          const isFat = i === CUBE_COUNT - 1;
-          const size = isSelected ? 17 : 12;
+    <div className="mt-3 flex gap-1.5 overflow-hidden whitespace-nowrap">
+      {options.map(({ value, label, Icon }, index) => {
+        if (scrolled && index === 0) return null;
+        const selected = value === activeDate;
 
-          return (
-            <span
-              key={i}
-              className="absolute rounded-[3px]"
-              style={{
-                width: size,
-                height: size,
-                left: `${(i / (CUBE_COUNT - 1)) * 100}%`,
-                backgroundColor: isFat
-                  ? SKEWER.fat
-                  : isCooked
-                    ? "#ec5a35"
-                    : SKEWER.rawMeat,
-                opacity: isCooked ? 1 : 0.6,
-                transform: `translateX(-50%) rotate(${tilt(i)}deg)`,
-                ...(isSelected && {
-                  border: "1px solid #ffffff",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                }),
-              }}
-            />
-          );
-        })}
-      </div>
-      <div className="flex justify-between text-[10px] text-muted">
-        <span>5 km</span>
-        <span>Illimitato</span>
-      </div>
-      <p className="mt-1.5 text-[11px] font-bold">
-        Nel raggio di: <span className="text-primary-ink">25 km</span>
-      </p>
+        return (
+          <span
+            key={value}
+            className={`flex shrink-0 items-center gap-1.5 rounded-2xl border px-2.5 py-2 text-[10px] font-bold ${
+              selected
+                ? "border-primary bg-primary text-white"
+                : "border-[#eadaca] bg-surface text-muted"
+            }`}
+          >
+            <Icon size={13} />
+            {label}
+          </span>
+        );
+      })}
+      <span
+        className={`flex shrink-0 items-center gap-1.5 rounded-2xl border px-2.5 py-2 text-[10px] font-bold ${
+          distance
+            ? "border-primary bg-primary text-white"
+            : "border-[#eadaca] bg-surface text-muted"
+        }`}
+      >
+        <SlidersHorizontal size={13} />
+        {distance ? `Entro ${distance} km` : "Distanza"}
+      </span>
     </div>
   );
 }
