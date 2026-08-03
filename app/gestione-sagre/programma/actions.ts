@@ -311,7 +311,7 @@ Ogni oggetto deve avere questi campi esatti:
 - "oraInizio": stringa (formato HH:MM, es. "19:00", se presente, altrimenti omettilo)
 - "oraFine": stringa (formato HH:MM, se presente, altrimenti omettilo)
 - "titolo": stringa (il titolo dell'evento, es. "Apertura Stand")
-- "descrizione": stringa (dettagli aggiuntivi, oppure omettilo)
+- "descrizione": stringa (fornisci una descrizione un po' più approfondita dell'evento basandoti sulle info della locandina, massimo 150 caratteri. Se non ci sono dettagli, omettilo)
 
 Restituisci SOLO il JSON valido e nient'altro.`;
 

@@ -202,3 +202,105 @@ export async function salvaSagra(
     };
   }
 }
+
+import { v2 as cloudinary } from "cloudinary";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export type DatiEstrattiSagra = {
+  nomeSagra?: string;
+  dataInizio?: string;
+  dataFine?: string;
+  oraInizio?: string;
+  citta?: string;
+  provincia?: string;
+  linkPaginaUfficiale?: string;
+  descrizione?: string;
+};
+
+export async function analizzaSagra(
+  formData: FormData,
+): Promise<{ esito: "successo"; dati: DatiEstrattiSagra; urlLocandina: string } | { esito: "errore"; messaggio: string }> {
+  if (!(await sessioneAdminValida())) {
+    return { esito: "errore", messaggio: "Sessione scaduta." };
+  }
+
+  const file = formData.get("locandina") as File | null;
+  if (!file) return { esito: "errore", messaggio: "Nessun file caricato." };
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { esito: "errore", messaggio: "Chiave Gemini mancante." };
+
+  try {
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    // 1. Upload su Cloudinary
+    const cloudinaryUpload = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "sagramanije/locandine" },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
+    
+    const urlLocandina = (cloudinaryUpload as any).secure_url;
+
+    // 2. Analisi Gemini
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+
+    const prompt = `Analizza la locandina allegata di una sagra/evento.
+Estrai le informazioni principali e restituiscile rigorosamente come JSON (un singolo oggetto).
+Campi richiesti:
+- "nomeSagra": stringa (il nome principale)
+- "dataInizio": stringa (YYYY-MM-DD, deducila se possibile)
+- "dataFine": stringa (YYYY-MM-DD, deducila se c'è un periodo, se è un giorno solo metti la stessa data di inizio)
+- "oraInizio": stringa (HH:MM, se presente)
+- "citta": stringa (città in cui si svolge)
+- "provincia": stringa (codice a 2 lettere, es. "TE", "AQ", "CH", "PE")
+- "linkPaginaUfficiale": stringa (se c'è un sito web o pagina Facebook/Instagram indicata)
+- "descrizione": stringa (una descrizione accattivante basata sulle info, max 300 caratteri)
+
+Restituisci SOLO il JSON valido.`;
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: buffer.toString("base64"), mimeType: file.type } }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    });
+
+    const testoRisposta = result.response.text();
+    const json = JSON.parse(testoRisposta);
+
+    const dati: DatiEstrattiSagra = {
+      nomeSagra: json.nomeSagra,
+      dataInizio: json.dataInizio,
+      dataFine: json.dataFine,
+      oraInizio: json.oraInizio,
+      citta: json.citta,
+      provincia: json.provincia,
+      linkPaginaUfficiale: json.linkPaginaUfficiale,
+      descrizione: json.descrizione,
+    };
+
+    return { esito: "successo", dati, urlLocandina };
+  } catch (error: any) {
+    console.error("Errore analisi sagra", error);
+    let messaggio = "Errore durante il caricamento o l'analisi.";
+    if (error?.message?.includes("429") || error?.message?.includes("quota")) {
+      messaggio = "Limite richieste raggiunto su Gemini (Errore 429).";
+    } else if (error?.message) {
+      messaggio = `Errore: ${error.message}`;
+    }
+    return { esito: "errore", messaggio };
+  }
+}
+
