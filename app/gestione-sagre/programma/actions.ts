@@ -352,8 +352,14 @@ Restituisci SOLO il JSON valido e nient'altro.`;
     }));
 
     return { esito: "successo", data };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Errore analisi locandina", error);
-    return { esito: "errore", messaggio: "Impossibile analizzare l'immagine. Riprova." };
+    let messaggio = "Impossibile analizzare l'immagine. Riprova.";
+    if (error?.message?.includes("429") || error?.message?.includes("quota")) {
+      messaggio = "Limite richieste raggiunto (Errore 429). Controlla la tua quota su Google AI Studio o riprova tra poco.";
+    } else if (error?.message) {
+      messaggio = `Errore AI: ${error.message}`;
+    }
+    return { esito: "errore", messaggio };
   }
 }
