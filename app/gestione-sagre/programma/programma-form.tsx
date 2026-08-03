@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import {
   useActionState,
@@ -20,6 +21,7 @@ import SubmitButton from "../submit-button";
 import {
   caricaProgramma,
   salvaProgramma,
+  analizzaLocandina,
   type ProgrammaAdmin,
   type StatoProgramma,
 } from "./actions";
@@ -32,7 +34,14 @@ export type SagraProgramma = {
   dataFine: string | null;
 };
 
-type Riga = { chiave: number };
+type Riga = {
+  chiave: number;
+  giorno?: string;
+  oraInizio?: string;
+  oraFine?: string;
+  titolo?: string;
+  descrizione?: string;
+};
 
 const STATO_INIZIALE: StatoProgramma = { esito: "idle", messaggio: "" };
 const INPUT =
@@ -80,6 +89,8 @@ export default function ProgrammaForm({
   const [ricercaSagra, setRicercaSagra] = useState("");
   const [programma, setProgramma] = useState<ProgrammaAdmin | null>(null);
   const [mostraDescrizioni, setMostraDescrizioni] = useState(false);
+  const [analizzando, setAnalizzando] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [caricamentoProgramma, avviaCaricamentoProgramma] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -146,6 +157,35 @@ export default function ProgrammaForm({
         ? correnti
         : correnti.filter((riga) => riga.chiave !== chiave),
     );
+  }
+
+  async function gestisciLocandina(evento: React.ChangeEvent<HTMLInputElement>) {
+    const file = evento.target.files?.[0];
+    if (!file) return;
+
+    setAnalizzando(true);
+    try {
+      const formData = new FormData();
+      formData.append("locandina", file);
+      const risultato = await analizzaLocandina(formData);
+
+      if (risultato.esito === "successo" && risultato.data.length > 0) {
+        const nuoveRighe = risultato.data.map((item, index) => ({
+          chiave: prossimaChiave + index,
+          ...item,
+        }));
+        setRighe(nuoveRighe);
+        setProssimaChiave((valore) => valore + risultato.data.length);
+      } else if (risultato.esito === "errore") {
+        alert(risultato.messaggio);
+      }
+    } catch (errore) {
+      console.error(errore);
+      alert("Errore durante l'analisi della locandina.");
+    } finally {
+      setAnalizzando(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   return (
@@ -347,15 +387,33 @@ export default function ProgrammaForm({
               {righe.length} {righe.length === 1 ? "voce" : "voci"}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={aggiungiRiga}
-            disabled={righe.length >= 50}
-            className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary bg-white px-4 py-2 text-sm font-bold text-primary-ink transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus aria-hidden size={17} />
-            Aggiungi attività
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={gestisciLocandina}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={analizzando}
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2 text-sm font-bold text-primary-ink transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Wand2 aria-hidden size={17} />
+              {analizzando ? "Analisi..." : "AI Locandina"}
+            </button>
+            <button
+              type="button"
+              onClick={aggiungiRiga}
+              disabled={righe.length >= 50}
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-primary bg-white px-4 py-2 text-sm font-bold text-primary-ink transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus aria-hidden size={17} />
+              Aggiungi attività
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -401,8 +459,8 @@ export default function ProgrammaForm({
                       sagraSelezionata?.dataInizio ??
                       undefined
                     }
-                    defaultValue={sagraSelezionata?.dataInizio ?? ""}
-                    key={`${riga.chiave}-${idSagra}`}
+                    defaultValue={riga.giorno || sagraSelezionata?.dataInizio || ""}
+                    key={`${riga.chiave}-${idSagra}-giorno`}
                     className={INPUT}
                   />
                 </div>
@@ -414,6 +472,8 @@ export default function ProgrammaForm({
                     id={`ora_inizio_${indice}`}
                     name={`ora_inizio_${indice}`}
                     type="time"
+                    defaultValue={riga.oraInizio || ""}
+                    key={`${riga.chiave}-oraInizio`}
                     className={INPUT}
                   />
                 </div>
@@ -425,6 +485,8 @@ export default function ProgrammaForm({
                     id={`ora_fine_${indice}`}
                     name={`ora_fine_${indice}`}
                     type="time"
+                    defaultValue={riga.oraFine || ""}
+                    key={`${riga.chiave}-oraFine`}
                     className={INPUT}
                   />
                 </div>
@@ -439,6 +501,8 @@ export default function ProgrammaForm({
                   name={`titolo_${indice}`}
                   required
                   maxLength={255}
+                  defaultValue={riga.titolo || ""}
+                  key={`${riga.chiave}-titolo`}
                   placeholder="Es. Apertura stand gastronomici"
                   className={INPUT}
                 />
@@ -453,6 +517,8 @@ export default function ProgrammaForm({
                   name={`descrizione_${indice}`}
                   rows={3}
                   maxLength={20_000}
+                  defaultValue={riga.descrizione || ""}
+                  key={`${riga.chiave}-descrizione`}
                   placeholder="Dettagli facoltativi sull’attività"
                   className={`${INPUT} min-h-24 resize-y`}
                 />

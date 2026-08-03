@@ -273,3 +273,87 @@ export async function salvaProgramma(
     };
   }
 }
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+export async function analizzaLocandina(
+  formData: FormData,
+): Promise<{ esito: "successo"; data: Partial<VoceProgramma>[] } | { esito: "errore"; messaggio: string }> {
+  if (!(await sessioneAdminValida())) {
+    return {
+      esito: "errore",
+      messaggio: "La sessione è scaduta. Ricarica la pagina ed effettua l’accesso.",
+    };
+  }
+
+  const file = formData.get("locandina") as File | null;
+  if (!file) {
+    return { esito: "errore", messaggio: "Nessun file caricato." };
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { esito: "errore", messaggio: "Chiave API Gemini mancante nel server." };
+  }
+
+  try {
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const mimeType = file.type;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Analizza la locandina allegata di una sagra/evento.
+Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array di oggetti.
+Ogni oggetto deve avere questi campi esatti:
+- "giorno": stringa (formato YYYY-MM-DD se riesci a dedurlo, altrimenti stringa vuota o omettilo)
+- "oraInizio": stringa (formato HH:MM, es. "19:00", se presente, altrimenti omettilo)
+- "oraFine": stringa (formato HH:MM, se presente, altrimenti omettilo)
+- "titolo": stringa (il titolo dell'evento, es. "Apertura Stand")
+- "descrizione": stringa (dettagli aggiuntivi, oppure omettilo)
+
+Restituisci SOLO il JSON valido e nient'altro.`;
+
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                data: buffer.toString("base64"),
+                mimeType,
+              },
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const testoRisposta = result.response.text();
+    const json = JSON.parse(testoRisposta);
+
+    if (!Array.isArray(json)) {
+      throw new Error("Il formato restituito non è un array.");
+    }
+
+    // Normalizziamo l'output
+    const data: Partial<VoceProgramma>[] = json.map((item: any) => ({
+      giorno: typeof item.giorno === "string" ? item.giorno : undefined,
+      oraInizio: typeof item.oraInizio === "string" ? item.oraInizio : undefined,
+      oraFine: typeof item.oraFine === "string" ? item.oraFine : undefined,
+      titolo: typeof item.titolo === "string" ? item.titolo : "Attività senza titolo",
+      descrizione: typeof item.descrizione === "string" ? item.descrizione : undefined,
+    }));
+
+    return { esito: "successo", data };
+  } catch (error) {
+    console.error("Errore analisi locandina", error);
+    return { esito: "errore", messaggio: "Impossibile analizzare l'immagine. Riprova." };
+  }
+}
