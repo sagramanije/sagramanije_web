@@ -302,7 +302,7 @@ export async function analizzaLocandina(
     const mimeType = file.type;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
 Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array di oggetti.
