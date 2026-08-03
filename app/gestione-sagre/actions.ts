@@ -243,7 +243,7 @@ export async function analizzaSagra(
     // 1. Upload su Cloudinary
     const cloudinaryUpload = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "sagramanije/locandine" },
+        { folder: "home" },
         (error, result) => {
           if (error) reject(error);
           else resolve(result);
