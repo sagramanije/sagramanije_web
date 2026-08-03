@@ -18,6 +18,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fisse: MetadataRoute.Sitemap = [
     { url: SITE_URL, lastModified: aggiornato, changeFrequency: "weekly", priority: 1 },
     {
+      url: `${SITE_URL}/supporto`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: `${SITE_URL}/sagre/abruzzo`,
       lastModified: aggiornato,
       changeFrequency: "daily",

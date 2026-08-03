@@ -20,6 +20,9 @@ export default function SiteFooter() {
             {EMAIL}
           </a>
           <p>Sagre e feste di paese dell&apos;Abruzzo.</p>
+          <Link href="/supporto" className="font-semibold hover:text-ink">
+            Supporto
+          </Link>
           <Link href="/privacy" className="font-semibold hover:text-ink">
             Privacy Policy
           </Link>
