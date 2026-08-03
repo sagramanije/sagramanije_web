@@ -36,11 +36,11 @@ export type SagraProgramma = {
 
 type Riga = {
   chiave: number;
-  giorno?: string;
-  oraInizio?: string;
-  oraFine?: string;
-  titolo?: string;
-  descrizione?: string;
+  giorno?: string | null;
+  oraInizio?: string | null;
+  oraFine?: string | null;
+  titolo?: string | null;
+  descrizione?: string | null;
 };
 
 const STATO_INIZIALE: StatoProgramma = { esito: "idle", messaggio: "" };
