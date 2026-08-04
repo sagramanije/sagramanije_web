@@ -205,6 +205,7 @@ export async function salvaSagra(
 
 import { v2 as cloudinary } from "cloudinary";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generaContenutoConRetry, messaggioErroreGemini } from "../../lib/gemini";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -272,7 +273,7 @@ Campi richiesti:
 
 Restituisci SOLO il JSON valido.`;
 
-    const result = await model.generateContent({
+    const result = await generaContenutoConRetry(model, {
       contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: buffer.toString("base64"), mimeType: file.type } }] }],
       generationConfig: { responseMimeType: "application/json" },
     });
@@ -294,12 +295,11 @@ Restituisci SOLO il JSON valido.`;
     return { esito: "successo", dati, urlLocandina };
   } catch (error: any) {
     console.error("Errore analisi sagra", error);
-    let messaggio = "Errore durante il caricamento o l'analisi.";
-    if (error?.message?.includes("429") || error?.message?.includes("quota")) {
-      messaggio = "Limite richieste raggiunto su Gemini (Errore 429).";
-    } else if (error?.message) {
-      messaggio = `Errore: ${error.message}`;
-    }
+    const messaggio =
+      messaggioErroreGemini(error) ??
+      (error?.message
+        ? `Errore: ${error.message}`
+        : "Errore durante il caricamento o l'analisi.");
     return { esito: "errore", messaggio };
   }
 }

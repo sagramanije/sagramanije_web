@@ -275,6 +275,7 @@ export async function salvaProgramma(
 }
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generaContenutoConRetry, messaggioErroreGemini } from "../../../lib/gemini";
 
 export async function analizzaLocandina(
   formData: FormData,
@@ -315,7 +316,7 @@ Ogni oggetto deve avere questi campi esatti:
 
 Restituisci SOLO il JSON valido e nient'altro.`;
 
-    const result = await model.generateContent({
+    const result = await generaContenutoConRetry(model, {
       contents: [
         {
           role: "user",
@@ -354,12 +355,11 @@ Restituisci SOLO il JSON valido e nient'altro.`;
     return { esito: "successo", data };
   } catch (error: any) {
     console.error("Errore analisi locandina", error);
-    let messaggio = "Impossibile analizzare l'immagine. Riprova.";
-    if (error?.message?.includes("429") || error?.message?.includes("quota")) {
-      messaggio = "Limite richieste raggiunto (Errore 429). Controlla la tua quota su Google AI Studio o riprova tra poco.";
-    } else if (error?.message) {
-      messaggio = `Errore AI: ${error.message}`;
-    }
+    const messaggio =
+      messaggioErroreGemini(error) ??
+      (error?.message
+        ? `Errore AI: ${error.message}`
+        : "Impossibile analizzare l'immagine. Riprova.");
     return { esito: "errore", messaggio };
   }
 }
