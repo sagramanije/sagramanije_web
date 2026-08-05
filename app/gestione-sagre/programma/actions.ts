@@ -278,39 +278,11 @@ import {
   FinishReason,
   GoogleGenAI,
 } from "@google/genai";
-import { generaContenutoConRetry, messaggioErroreGemini } from "../../../lib/gemini";
-
-const SCHEMA_PROGRAMMA = {
-  type: "array",
-  minItems: 1,
-  maxItems: 50,
-  items: {
-    type: "object",
-    properties: {
-      giorno: {
-        type: "string",
-        description: "Data in formato YYYY-MM-DD, oppure stringa vuota.",
-      },
-      oraInizio: {
-        type: "string",
-        description: "Ora di inizio in formato HH:MM, oppure stringa vuota.",
-      },
-      oraFine: {
-        type: "string",
-        description: "Ora di fine in formato HH:MM, oppure stringa vuota.",
-      },
-      titolo: {
-        type: "string",
-        description: "Titolo breve dell'attività.",
-      },
-      descrizione: {
-        type: "string",
-        description: "Descrizione dell'attività, massimo 150 caratteri.",
-      },
-    },
-    required: ["titolo"],
-  },
-};
+import {
+  generaContenutoConRetry,
+  messaggioErroreGemini,
+  mimeTypeGemini,
+} from "../../../lib/gemini";
 
 class ErroreRispostaAi extends Error {}
 
@@ -363,6 +335,13 @@ export async function analizzaLocandina(
   if (!file) {
     return { esito: "errore", messaggio: "Nessun file caricato." };
   }
+  const mimeType = mimeTypeGemini(file);
+  if (!mimeType) {
+    return {
+      esito: "errore",
+      messaggio: "Formato non supportato. Usa PDF, PNG, JPEG, WebP, HEIC o HEIF.",
+    };
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -372,8 +351,6 @@ export async function analizzaLocandina(
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const mimeType = file.type;
-
     const genAI = new GoogleGenAI({ apiKey });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
@@ -408,7 +385,6 @@ Restituisci SOLO il JSON valido e nient'altro.`;
         ],
         config: {
           responseMimeType: "application/json",
-          responseJsonSchema: SCHEMA_PROGRAMMA,
           maxOutputTokens: 8192,
           temperature: 0.1,
         },

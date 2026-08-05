@@ -7,6 +7,32 @@ import {
 
 const TENTATIVI_MASSIMI = 3;
 const ATTESA_BASE_MS = 800;
+const MIME_SUPPORTATI = new Set([
+  "application/pdf",
+  "image/heic",
+  "image/heif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+const MIME_PER_ESTENSIONE: Record<string, string> = {
+  heic: "image/heic",
+  heif: "image/heif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  pdf: "application/pdf",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+export function mimeTypeGemini(file: { name: string; type: string }): string | null {
+  const dichiarato = file.type.toLowerCase().split(";", 1)[0].trim();
+  const normalizzato = dichiarato === "image/jpg" ? "image/jpeg" : dichiarato;
+  if (MIME_SUPPORTATI.has(normalizzato)) return normalizzato;
+
+  const estensione = file.name.toLowerCase().split(".").pop() ?? "";
+  return MIME_PER_ESTENSIONE[estensione] ?? null;
+}
 
 function attesa(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

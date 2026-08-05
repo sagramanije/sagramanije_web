@@ -74,7 +74,7 @@ export default function SagraForm() {
           <div className="flex items-center gap-3">
             <input
               type="file"
-              accept="image/*,application/pdf"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,application/pdf,image/png,image/jpeg,image/webp,image/heic,image/heif"
               className="hidden"
               ref={fileInputRef}
               onChange={gestisciLocandina}

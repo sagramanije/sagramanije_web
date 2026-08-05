@@ -205,7 +205,11 @@ export async function salvaSagra(
 
 import { v2 as cloudinary } from "cloudinary";
 import { GoogleGenAI } from "@google/genai";
-import { generaContenutoConRetry, messaggioErroreGemini } from "../../lib/gemini";
+import {
+  generaContenutoConRetry,
+  messaggioErroreGemini,
+  mimeTypeGemini,
+} from "../../lib/gemini";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -233,6 +237,13 @@ export async function analizzaSagra(
 
   const file = formData.get("locandina") as File | null;
   if (!file) return { esito: "errore", messaggio: "Nessun file caricato." };
+  const mimeType = mimeTypeGemini(file);
+  if (!mimeType) {
+    return {
+      esito: "errore",
+      messaggio: "Formato non supportato. Usa PDF, PNG, JPEG, WebP, HEIC o HEIF.",
+    };
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { esito: "errore", messaggio: "Chiave Gemini mancante." };
@@ -274,7 +285,7 @@ Restituisci SOLO il JSON valido.`;
 
     const result = await generaContenutoConRetry(genAI, {
       model: "gemini-3.5-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: buffer.toString("base64"), mimeType: file.type } }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: buffer.toString("base64"), mimeType } }] }],
       config: { responseMimeType: "application/json" },
     });
 
