@@ -204,7 +204,7 @@ export async function salvaSagra(
 }
 
 import { v2 as cloudinary } from "cloudinary";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { generaContenutoConRetry, messaggioErroreGemini } from "../../lib/gemini";
 
 cloudinary.config({
@@ -256,8 +256,7 @@ export async function analizzaSagra(
     const urlLocandina = (cloudinaryUpload as any).secure_url;
 
     // 2. Analisi Gemini
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+    const genAI = new GoogleGenAI({ apiKey });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
 Estrai le informazioni principali e restituiscile rigorosamente come JSON (un singolo oggetto).
@@ -273,12 +272,13 @@ Campi richiesti:
 
 Restituisci SOLO il JSON valido.`;
 
-    const result = await generaContenutoConRetry(model, {
+    const result = await generaContenutoConRetry(genAI, {
+      model: "gemini-3.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { data: buffer.toString("base64"), mimeType: file.type } }] }],
-      generationConfig: { responseMimeType: "application/json" },
+      config: { responseMimeType: "application/json" },
     });
 
-    const testoRisposta = result.response.text();
+    const testoRisposta = result.text ?? "";
     const json = JSON.parse(testoRisposta);
 
     const dati: DatiEstrattiSagra = {

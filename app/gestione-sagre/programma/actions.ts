@@ -276,37 +276,35 @@ export async function salvaProgramma(
 
 import {
   FinishReason,
-  GoogleGenerativeAI,
-  SchemaType,
-  type ResponseSchema,
-} from "@google/generative-ai";
+  GoogleGenAI,
+} from "@google/genai";
 import { generaContenutoConRetry, messaggioErroreGemini } from "../../../lib/gemini";
 
-const SCHEMA_PROGRAMMA: ResponseSchema = {
-  type: SchemaType.ARRAY,
+const SCHEMA_PROGRAMMA = {
+  type: "array",
   minItems: 1,
   maxItems: 50,
   items: {
-    type: SchemaType.OBJECT,
+    type: "object",
     properties: {
       giorno: {
-        type: SchemaType.STRING,
+        type: "string",
         description: "Data in formato YYYY-MM-DD, oppure stringa vuota.",
       },
       oraInizio: {
-        type: SchemaType.STRING,
+        type: "string",
         description: "Ora di inizio in formato HH:MM, oppure stringa vuota.",
       },
       oraFine: {
-        type: SchemaType.STRING,
+        type: "string",
         description: "Ora di fine in formato HH:MM, oppure stringa vuota.",
       },
       titolo: {
-        type: SchemaType.STRING,
+        type: "string",
         description: "Titolo breve dell'attività.",
       },
       descrizione: {
-        type: SchemaType.STRING,
+        type: "string",
         description: "Descrizione dell'attività, massimo 150 caratteri.",
       },
     },
@@ -376,8 +374,7 @@ export async function analizzaLocandina(
     const buffer = Buffer.from(bytes);
     const mimeType = file.type;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+    const genAI = new GoogleGenAI({ apiKey });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
 Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array con un massimo di 50 oggetti.
@@ -393,7 +390,8 @@ Restituisci SOLO il JSON valido e nient'altro.`;
     let ultimoErrore: ErroreRispostaAi | undefined;
 
     for (let tentativo = 0; tentativo < 2; tentativo += 1) {
-      const result = await generaContenutoConRetry(model, {
+      const result = await generaContenutoConRetry(genAI, {
+        model: "gemini-3.5-flash",
         contents: [
           {
             role: "user",
@@ -408,15 +406,15 @@ Restituisci SOLO il JSON valido e nient'altro.`;
             ],
           },
         ],
-        generationConfig: {
+        config: {
           responseMimeType: "application/json",
-          responseSchema: SCHEMA_PROGRAMMA,
+          responseJsonSchema: SCHEMA_PROGRAMMA,
           maxOutputTokens: 8192,
           temperature: 0.1,
         },
       });
 
-      const candidato = result.response.candidates?.[0];
+      const candidato = result.candidates?.[0];
       if (candidato?.finishReason === FinishReason.MAX_TOKENS) {
         ultimoErrore = new ErroreRispostaAi(
           "Il programma estratto è troppo lungo ed è stato interrotto. Riprova con una locandina più leggibile.",
@@ -425,7 +423,7 @@ Restituisci SOLO il JSON valido e nient'altro.`;
       }
 
       try {
-        const data = normalizzaRispostaProgramma(result.response.text());
+        const data = normalizzaRispostaProgramma(result.text ?? "");
         return { esito: "successo", data };
       } catch (error) {
         if (!(error instanceof ErroreRispostaAi)) throw error;

@@ -1,5 +1,9 @@
 import "server-only";
-import type { GenerativeModel } from "@google/generative-ai";
+import {
+  type GenerateContentParameters,
+  type GenerateContentResponse,
+  type GoogleGenAI,
+} from "@google/genai";
 
 const TENTATIVI_MASSIMI = 3;
 const ATTESA_BASE_MS = 800;
@@ -27,12 +31,12 @@ function eSovraccarico(errore: unknown): boolean {
  * senza dover disturbare chi sta compilando il form.
  */
 export async function generaContenutoConRetry(
-  model: GenerativeModel,
-  richiesta: Parameters<GenerativeModel["generateContent"]>[0],
-) {
+  client: GoogleGenAI,
+  richiesta: GenerateContentParameters,
+): Promise<GenerateContentResponse> {
   for (let tentativo = 1; tentativo <= TENTATIVI_MASSIMI; tentativo++) {
     try {
-      return await model.generateContent(richiesta);
+      return await client.models.generateContent(richiesta);
     } catch (errore) {
       if (!eSovraccarico(errore) || tentativo === TENTATIVI_MASSIMI) throw errore;
       await attesa(ATTESA_BASE_MS * tentativo);
