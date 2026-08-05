@@ -274,8 +274,82 @@ export async function salvaProgramma(
   }
 }
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  FinishReason,
+  GoogleGenerativeAI,
+  SchemaType,
+  type ResponseSchema,
+} from "@google/generative-ai";
 import { generaContenutoConRetry, messaggioErroreGemini } from "../../../lib/gemini";
+
+const SCHEMA_PROGRAMMA: ResponseSchema = {
+  type: SchemaType.ARRAY,
+  minItems: 1,
+  maxItems: 50,
+  items: {
+    type: SchemaType.OBJECT,
+    properties: {
+      giorno: {
+        type: SchemaType.STRING,
+        description: "Data in formato YYYY-MM-DD, oppure stringa vuota.",
+      },
+      oraInizio: {
+        type: SchemaType.STRING,
+        description: "Ora di inizio in formato HH:MM, oppure stringa vuota.",
+      },
+      oraFine: {
+        type: SchemaType.STRING,
+        description: "Ora di fine in formato HH:MM, oppure stringa vuota.",
+      },
+      titolo: {
+        type: SchemaType.STRING,
+        description: "Titolo breve dell'attività.",
+      },
+      descrizione: {
+        type: SchemaType.STRING,
+        description: "Descrizione dell'attività, massimo 150 caratteri.",
+      },
+    },
+    required: ["titolo"],
+  },
+};
+
+class ErroreRispostaAi extends Error {}
+
+function normalizzaRispostaProgramma(testoRisposta: string): Partial<VoceProgramma>[] {
+  let valore: unknown;
+
+  try {
+    valore = JSON.parse(testoRisposta);
+  } catch {
+    throw new ErroreRispostaAi(
+      "L'AI ha restituito un programma incompleto. Riprova l'analisi della locandina.",
+    );
+  }
+
+  if (!Array.isArray(valore)) {
+    throw new ErroreRispostaAi("L'AI non ha restituito un elenco di attività valido.");
+  }
+
+  return valore.map((elemento) => {
+    if (!elemento || typeof elemento !== "object") {
+      throw new ErroreRispostaAi("Una delle attività restituite dall'AI non è valida.");
+    }
+
+    const item = elemento as Record<string, unknown>;
+    return {
+      giorno: typeof item.giorno === "string" ? item.giorno : undefined,
+      oraInizio: typeof item.oraInizio === "string" ? item.oraInizio : undefined,
+      oraFine: typeof item.oraFine === "string" ? item.oraFine : undefined,
+      titolo:
+        typeof item.titolo === "string" && item.titolo.trim()
+          ? item.titolo
+          : "Attività senza titolo",
+      descrizione:
+        typeof item.descrizione === "string" ? item.descrizione : undefined,
+    };
+  });
+}
 
 export async function analizzaLocandina(
   formData: FormData,
@@ -306,7 +380,7 @@ export async function analizzaLocandina(
     const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
-Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array di oggetti.
+Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array con un massimo di 50 oggetti.
 Ogni oggetto deve avere questi campi esatti:
 - "giorno": stringa (formato YYYY-MM-DD se riesci a dedurlo, altrimenti stringa vuota o omettilo)
 - "oraInizio": stringa (formato HH:MM, es. "19:00", se presente, altrimenti omettilo)
@@ -316,50 +390,62 @@ Ogni oggetto deve avere questi campi esatti:
 
 Restituisci SOLO il JSON valido e nient'altro.`;
 
-    const result = await generaContenutoConRetry(model, {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                data: buffer.toString("base64"),
-                mimeType,
+    let ultimoErrore: ErroreRispostaAi | undefined;
+
+    for (let tentativo = 0; tentativo < 2; tentativo += 1) {
+      const result = await generaContenutoConRetry(model, {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  data: buffer.toString("base64"),
+                  mimeType,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA_PROGRAMMA,
+          maxOutputTokens: 8192,
+          temperature: 0.1,
         },
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
+      });
 
-    const testoRisposta = result.response.text();
-    const json = JSON.parse(testoRisposta);
+      const candidato = result.response.candidates?.[0];
+      if (candidato?.finishReason === FinishReason.MAX_TOKENS) {
+        ultimoErrore = new ErroreRispostaAi(
+          "Il programma estratto è troppo lungo ed è stato interrotto. Riprova con una locandina più leggibile.",
+        );
+        continue;
+      }
 
-    if (!Array.isArray(json)) {
-      throw new Error("Il formato restituito non è un array.");
+      try {
+        const data = normalizzaRispostaProgramma(result.response.text());
+        return { esito: "successo", data };
+      } catch (error) {
+        if (!(error instanceof ErroreRispostaAi)) throw error;
+        ultimoErrore = error;
+      }
     }
 
-    // Normalizziamo l'output
-    const data: Partial<VoceProgramma>[] = json.map((item: any) => ({
-      giorno: typeof item.giorno === "string" ? item.giorno : undefined,
-      oraInizio: typeof item.oraInizio === "string" ? item.oraInizio : undefined,
-      oraFine: typeof item.oraFine === "string" ? item.oraFine : undefined,
-      titolo: typeof item.titolo === "string" ? item.titolo : "Attività senza titolo",
-      descrizione: typeof item.descrizione === "string" ? item.descrizione : undefined,
-    }));
-
-    return { esito: "successo", data };
-  } catch (error: any) {
+    throw ultimoErrore ?? new ErroreRispostaAi("L'AI non ha restituito un programma valido.");
+  } catch (error: unknown) {
     console.error("Errore analisi locandina", error);
-    const messaggio =
-      messaggioErroreGemini(error) ??
-      (error?.message
-        ? `Errore AI: ${error.message}`
-        : "Impossibile analizzare l'immagine. Riprova.");
+    let messaggio = "Impossibile analizzare l'immagine. Riprova.";
+    const dettaglio = error instanceof Error ? error.message : "";
+    const messaggioGemini = messaggioErroreGemini(error);
+    if (messaggioGemini) {
+      messaggio = messaggioGemini;
+    } else if (error instanceof ErroreRispostaAi) {
+      messaggio = error.message;
+    } else if (dettaglio) {
+      messaggio = `Errore AI: ${dettaglio}`;
+    }
     return { esito: "errore", messaggio };
   }
 }
