@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { PLAY_STORE_URL } from "../data";
+import { APP_STORE_URL, PLAY_STORE_URL } from "../data";
 
 export const metadata: Metadata = {
   title: "Scarica l'app",
@@ -19,10 +19,14 @@ export const metadata: Metadata = {
 export default async function ScaricaPage() {
   const userAgent = (await headers()).get("user-agent") ?? "";
 
-  // iOS resta in attesa della pubblicazione (vedi APP_STORE_URL in app/data.ts):
-  // finché non c'è un link reale, tutto ciò che non è Android torna alla home.
+  // I dispositivi mobili vanno allo store corretto; da desktop si torna alla
+  // home, dove sono visibili entrambi i badge.
   if (/android/i.test(userAgent)) {
     redirect(PLAY_STORE_URL);
+  }
+
+  if (/iPad|iPhone|iPod|Macintosh.*Mobile/i.test(userAgent)) {
+    redirect(APP_STORE_URL);
   }
 
   redirect("/");

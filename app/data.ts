@@ -114,7 +114,8 @@ export const EMAIL = "sagramanije@gmail.com";
 export const PRIVACY_OWNER = "Andrea Damiani/Matteo Di Blasio";
 export const PRIVACY_UPDATED = "13 luglio 2026";
 
-// Link pubblici agli store. App Store resta in attesa della pubblicazione iOS.
-export const APP_STORE_URL: string = "#";
+// Link pubblici agli store.
+export const APP_STORE_URL: string =
+  "https://apps.apple.com/it/app/sagramanije/id6795061200";
 export const PLAY_STORE_URL: string =
   "https://play.google.com/store/apps/details?id=it.sagramanije.app";
