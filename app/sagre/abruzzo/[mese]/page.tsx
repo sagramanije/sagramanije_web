@@ -8,7 +8,11 @@ import {
   getSagreAbruzzo,
   mesiConSagre,
   parseMeseSlug,
+  PROVINCE,
+  sagreDiProvincia,
   sagreNelMese,
+  sagreNelWeekend,
+  weekendCorrente,
 } from "../../../../lib/sagre";
 import { OG_DEFAULTS, SITE_URL } from "../../../../lib/site";
 
@@ -23,6 +27,15 @@ function maiuscola(s: string) {
 // "ad agosto", "ad aprile", ma "a luglio" (d eufonica solo davanti ad a-).
 function aMese(nome: string) {
   return nome.startsWith("a") ? `ad ${nome}` : `a ${nome}`;
+}
+
+function toccaIlGiorno(
+  sagra: { data_inizio: Date | null; data_fine: Date | null },
+  giorno: Date,
+) {
+  if (!sagra.data_inizio) return false;
+  const fine = sagra.data_fine ?? sagra.data_inizio;
+  return sagra.data_inizio <= giorno && fine >= giorno;
 }
 
 export async function generateStaticParams() {
@@ -71,6 +84,23 @@ export default async function MesePage({ params }: Props) {
   if (delMese.length === 0) notFound();
 
   const altriMesi = mesiConSagre(sagre).filter((m) => m.slug !== slug);
+  const esempi = delMese.slice(0, 3);
+  const perProvincia = PROVINCE.map((provincia) => ({
+    provincia,
+    sagre: sagreDiProvincia(delMese, provincia),
+  }));
+  const oggi = new Date();
+  const meseCorrente =
+    mese.anno === oggi.getFullYear() && mese.indice === oggi.getMonth();
+  const delWeekend = meseCorrente
+    ? sagreNelWeekend(delMese, weekendCorrente(oggi))
+    : [];
+  const ferragosto =
+    mese.indice === 7
+      ? delMese.filter((sagra) =>
+          toccaIlGiorno(sagra, new Date(mese.anno, 7, 15, 12)),
+        )
+      : [];
 
   const itemList = {
     "@context": "https://schema.org",
@@ -125,15 +155,141 @@ export default async function MesePage({ params }: Props) {
         <h1 className="mt-3 font-title text-4xl leading-tight sm:text-5xl">
           Sagre in Abruzzo {aMese(mese.nome)} {mese.anno}
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-          {delMese.length === 1
-            ? "Una sagra in calendario"
-            : `${delMese.length} sagre e feste di paese in calendario`}{" "}
-          in Abruzzo {aMese(mese.nome)} {mese.anno}, con date, orari e paesi.
-          L&apos;elenco si aggiorna man mano che ne troviamo di nuove.
-        </p>
+        <div className="mt-5 max-w-3xl space-y-4 text-lg leading-relaxed text-muted">
+          <p>
+            Cerchi cosa fare in Abruzzo {aMese(mese.nome)} {mese.anno}? In
+            questa pagina trovi {delMese.length === 1 ? "una sagra" : `${delMese.length} sagre`},
+            feste di paese e appuntamenti enogastronomici in programma nelle
+            province di Teramo, Pescara, Chieti e L&apos;Aquila, ordinati per
+            data e località.
+          </p>
+          <p>
+            Il calendario viene aggiornato man mano che troviamo nuove date
+            pubblicate dagli organizzatori. Ogni scheda riporta il paese, il
+            periodo, gli orari disponibili e la locandina, così puoi verificare
+            subito quando si svolge l&apos;evento e aprire tutti i dettagli prima
+            di partire.
+          </p>
+          <p>
+            Nel dettaglio, il calendario conta{" "}
+            {perProvincia.map(({ provincia, sagre: sagreProvincia }, indice) => (
+              <span key={provincia.slug}>
+                {indice > 0
+                  ? indice === perProvincia.length - 1
+                    ? " e "
+                    : ", "
+                  : ""}
+                {sagreProvincia.length} in provincia di {provincia.nome}
+              </span>
+            ))}
+            . Il riepilogo per provincia ti permette di restringere subito la
+            ricerca alla zona più comoda, senza scorrere l&apos;intero elenco.
+          </p>
+          <p>
+            Tra gli appuntamenti già in calendario ci sono{" "}
+            {esempi.map((sagra, indice) => (
+              <span key={sagra.slug}>
+                {indice > 0 ? (indice === esempi.length - 1 ? " e " : ", ") : ""}
+                <Link
+                  href={`/sagra/${sagra.slug}`}
+                  className="font-bold text-primary-ink hover:underline"
+                >
+                  {sagra.nome_sagra}
+                </Link>
+              </span>
+            ))}
+            . Puoi partire dalle proposte del weekend, dagli eventi di
+            Ferragosto quando presenti oppure dal calendario della provincia
+            che ti interessa. Le stesse sagre sono disponibili nell&apos;app
+            Sagramanije, anche sulla mappa.
+          </p>
+        </div>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          {meseCorrente ? (
+            <section className="rounded-3xl bg-surface p-6">
+              <h2 className="font-title text-2xl">
+                Sagre in Abruzzo questo weekend
+              </h2>
+              <p className="mt-2 text-muted">
+                {delWeekend.length === 0
+                  ? "Non risultano ancora sagre per questo fine settimana. Il calendario viene aggiornato di continuo."
+                  : `${delWeekend.length} ${delWeekend.length === 1 ? "appuntamento cade" : "appuntamenti cadono"} nel fine settimana in corso.`}
+              </p>
+              <Link
+                href="/sagre/abruzzo/questo-weekend"
+                className="mt-4 inline-block font-bold text-primary-ink hover:underline"
+              >
+                Guarda le sagre del weekend →
+              </Link>
+            </section>
+          ) : null}
+
+          {mese.indice === 7 ? (
+            <section id="ferragosto" className="rounded-3xl bg-surface p-6">
+              <h2 className="font-title text-2xl">
+                Sagre di Ferragosto in Abruzzo
+              </h2>
+              {ferragosto.length > 0 ? (
+                <>
+                  <p className="mt-2 text-muted">
+                    {ferragosto.length === 1
+                      ? "Un evento in calendario comprende il 15 agosto."
+                      : `${ferragosto.length} eventi in calendario comprendono il 15 agosto.`}
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    {ferragosto.slice(0, 5).map((sagra) => (
+                      <li key={sagra.slug}>
+                        <Link
+                          href={`/sagra/${sagra.slug}`}
+                          className="font-bold text-primary-ink hover:underline"
+                        >
+                          {sagra.nome_sagra}
+                          {sagra.citta ? ` — ${sagra.citta}` : ""}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="mt-2 text-muted">
+                  Non risultano ancora eventi per il 15 agosto: torna a
+                  controllare, aggiungiamo nuove date appena vengono pubblicate.
+                </p>
+              )}
+            </section>
+          ) : null}
+        </div>
+
+        <section className="mt-10" aria-labelledby="province-title">
+          <h2 id="province-title" className="font-title text-2xl sm:text-3xl">
+            Sagre {aMese(mese.nome)} {mese.anno} per provincia
+          </h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {perProvincia.map(({ provincia, sagre: sagreProvincia }) => (
+              <Link
+                key={provincia.slug}
+                href={`/sagre/abruzzo/provincia/${provincia.slug}`}
+                className="rounded-2xl bg-beige p-5 transition-transform hover:-translate-y-0.5 hover:bg-primary hover:text-white"
+              >
+                <h3 className="font-title text-lg">
+                  Provincia di {provincia.nome}
+                </h3>
+                <p className="mt-1 text-sm font-semibold">
+                  {sagreProvincia.length === 1
+                    ? "1 evento nel mese"
+                    : `${sagreProvincia.length} eventi nel mese`}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <h2 className="mt-14 font-title text-2xl sm:text-3xl">
+          Tutte le sagre in Abruzzo {aMese(mese.nome)} {mese.anno}
+        </h2>
+
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {delMese.map((s) => (
             <EventCard key={s.slug} sagra={s} />
           ))}
