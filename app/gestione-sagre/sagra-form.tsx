@@ -148,10 +148,10 @@ export default function SagraForm() {
             <select
               id="category"
               name="category"
-              defaultValue="sagra"
+              defaultValue="Sagra"
               className={INPUT}
             >
-              <option value="sagra">Sagra</option>
+              <option value="Sagra">Sagra</option>
               <option value="Evento">Evento</option>
               <option value="Altro">Altro</option>
             </select>
