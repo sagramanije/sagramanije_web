@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     "Le sagre e le feste di paese dell'Abruzzo, su una mappa. Scopri cosa si mangia stasera a due passi da casa.",
   openGraph: OG_DEFAULTS,
   twitter: { card: "summary_large_image" },
+  itunes: { appId: "8S7D997JLY" },
 };
 
 export const viewport: Viewport = {
