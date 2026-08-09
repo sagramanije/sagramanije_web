@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "8S7D997JLY.it.sagramanije.app",
+        "paths": ["/sagra/*"]
+      }
+    ]
+  }
+}

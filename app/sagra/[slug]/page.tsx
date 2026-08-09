@@ -1,7 +1,7 @@
 import { Calendar, Clock, ExternalLink, MapPin, Navigation } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import StripedPlaceholder from "../../components/striped-placeholder";
@@ -37,7 +37,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const sagra = await getSagraBySlug(slug);
+  let sagra = await getSagraBySlug(slug);
+  if (!sagra && !isNaN(Number(slug))) {
+    const sagre = await getSagreAbruzzo();
+    sagra = sagre.find((s) => s.id === Number(slug));
+  }
   if (!sagra) return {};
   const anno = sagra.data_inizio?.getFullYear();
   const luogo = sagra.citta
@@ -48,25 +52,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: titolo,
     description: descrizione,
-    alternates: { canonical: `/sagra/${slug}` },
+    alternates: { canonical: `/sagra/${sagra.slug}` },
     openGraph: {
       ...OG_DEFAULTS,
       title: titolo,
       description: descrizione,
-      url: `/sagra/${slug}`,
+      url: `/sagra/${sagra.slug}`,
     },
   };
 }
 
 export default async function SagraPage({ params }: Props) {
   const { slug } = await params;
-  const sagra = await getSagraBySlug(slug);
+  let sagra = await getSagraBySlug(slug);
+
+  if (!sagra && !isNaN(Number(slug))) {
+    const sagre = await getSagreAbruzzo();
+    sagra = sagre.find((s) => s.id === Number(slug));
+    if (sagra) {
+      redirect(`/sagra/${sagra.slug}`);
+    }
+  }
+
   if (!sagra) notFound();
   const programma = await getProgrammaSagra(sagra.id);
-
-  const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
-  const conclusa = eConclusa(sagra);
-  const locandina = locandinaProxyUrl(sagra, "detail");
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
   // La descrizione vera dell'evento. Quando manca resta il riassunto dai dati,
