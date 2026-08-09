@@ -29,7 +29,9 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateStaticParams() {
   try {
     const sagre = await getSagreAbruzzo();
-    return sagre.map((s) => ({ slug: s.slug }));
+    const slugs = sagre.map((s) => ({ slug: s.slug }));
+    const ids = sagre.map((s) => ({ slug: s.id.toString() }));
+    return [...slugs, ...ids];
   } catch {
     return [];
   }
@@ -76,6 +78,10 @@ export default async function SagraPage({ params }: Props) {
 
   if (!sagra) notFound();
   const programma = await getProgrammaSagra(sagra.id);
+  
+  const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
+  const conclusa = eConclusa(sagra);
+  const locandina = locandinaProxyUrl(sagra, "detail");
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
 
   // La descrizione vera dell'evento. Quando manca resta il riassunto dai dati,
