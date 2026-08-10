@@ -155,7 +155,7 @@ export async function salvaSagra(
     }
 
     const categoria = testo(formData, "category", 100) ?? "sagra";
-    if (!["sagra", "Evento", "Altro"].includes(categoria)) {
+    if (!["sagra", "Evento", "Altro","Sagra"].includes(categoria)) {
       throw new ErroreValidazione("La categoria selezionata non è valida.");
     }
 
