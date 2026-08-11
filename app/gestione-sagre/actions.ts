@@ -154,8 +154,13 @@ export async function salvaSagra(
       throw new ErroreValidazione("La provincia selezionata non è valida.");
     }
 
-    const categoria = testo(formData, "category", 100) ?? "sagra";
-    if (!["sagra", "Evento", "Altro","Sagra"].includes(categoria)) {
+    const categoriaRicevuta = testo(formData, "category", 100) ?? "Sagra";
+    const categoria = {
+      sagra: "Sagra",
+      evento: "Evento",
+      altro: "Altro",
+    }[categoriaRicevuta.toLowerCase()];
+    if (!categoria) {
       throw new ErroreValidazione("La categoria selezionata non è valida.");
     }
 
