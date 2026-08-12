@@ -208,19 +208,13 @@ export async function salvaSagra(
   }
 }
 
-import { v2 as cloudinary } from "cloudinary";
 import { GoogleGenAI } from "@google/genai";
 import {
   generaContenutoConRetry,
   messaggioErroreGemini,
   mimeTypeGemini,
 } from "../../lib/gemini";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { caricaLocandina } from "../../lib/locandina-storage";
 
 export type DatiEstrattiSagra = {
   nomeSagra?: string;
@@ -242,6 +236,12 @@ export async function analizzaSagra(
 
   const file = formData.get("locandina") as File | null;
   if (!file) return { esito: "errore", messaggio: "Nessun file caricato." };
+  if (file.size > 10 * 1024 * 1024) {
+    return {
+      esito: "errore",
+      messaggio: "La locandina supera il limite di 10 MB.",
+    };
+  }
   const mimeType = mimeTypeGemini(file);
   if (!mimeType) {
     return {
@@ -257,21 +257,6 @@ export async function analizzaSagra(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    // 1. Upload su Cloudinary
-    const cloudinaryUpload = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "home" },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
-    });
-    
-    const urlLocandina = (cloudinaryUpload as any).secure_url;
-
-    // 2. Analisi Gemini
     const genAI = new GoogleGenAI({ apiKey });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
@@ -308,15 +293,23 @@ Restituisci SOLO il JSON valido.`;
       descrizione: json.descrizione,
     };
 
+    // Salviamo solo dopo un'analisi riuscita, così un errore AI non lascia
+    // oggetti orfani nello storage scelto dall'amministratore.
+    const urlLocandina = await caricaLocandina(
+      buffer,
+      mimeType,
+      formData.get("destinazione_locandina"),
+    );
+
     return { esito: "successo", dati, urlLocandina };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Errore analisi sagra", error);
+    const dettaglio = error instanceof Error ? error.message : "";
     const messaggio =
       messaggioErroreGemini(error) ??
-      (error?.message
-        ? `Errore: ${error.message}`
+      (dettaglio
+        ? `Errore: ${dettaglio}`
         : "Errore durante il caricamento o l'analisi.");
     return { esito: "errore", messaggio };
   }
 }
-

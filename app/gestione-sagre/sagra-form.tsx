@@ -15,15 +15,22 @@ export default function SagraForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [analizzando, setAnalizzando] = useState(false);
+  const [destinazioneLocandina, setDestinazioneLocandina] = useState("minio");
 
   async function gestisciLocandina(evento: React.ChangeEvent<HTMLInputElement>) {
     const file = evento.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("La locandina supera il limite di 10 MB.");
+      evento.target.value = "";
+      return;
+    }
 
     setAnalizzando(true);
     try {
       const formData = new FormData();
       formData.append("locandina", file);
+      formData.append("destinazione_locandina", destinazioneLocandina);
       const risultato = await analizzaSagra(formData);
 
       if (risultato.esito === "successo") {
@@ -71,7 +78,21 @@ export default function SagraForm() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <legend className="font-title text-xl">Informazioni principali</legend>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-xs font-bold text-muted">
+              Salva su
+              <select
+                value={destinazioneLocandina}
+                onChange={(evento) =>
+                  setDestinazioneLocandina(evento.target.value)
+                }
+                disabled={analizzando}
+                className="mt-1 block min-h-11 rounded-2xl border border-beige bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+              >
+                <option value="minio">MinIO (predefinito)</option>
+                <option value="cloudinary">Cloudinary</option>
+              </select>
+            </label>
             <input
               type="file"
               accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,application/pdf,image/png,image/jpeg,image/webp,image/heic,image/heif"
@@ -86,7 +107,7 @@ export default function SagraForm() {
               className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-primary/10 px-4 py-2 text-sm font-bold text-primary-ink transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Wand2 aria-hidden size={17} />
-              {analizzando ? "Upload & Analisi..." : "Carica Locandina (AI)"}
+              {analizzando ? "Upload e analisi..." : "Carica e analizza"}
             </button>
           </div>
         </div>
@@ -246,7 +267,7 @@ export default function SagraForm() {
             className={INPUT}
           />
           <p className="mt-2 text-xs text-muted">
-            Puoi incollare un URL o usare il bottone "Carica Locandina (AI)" in alto per caricarla automaticamente.
+            Puoi incollare un URL oppure caricare il file su MinIO o Cloudinary con il pulsante in alto.
           </p>
         </div>
 

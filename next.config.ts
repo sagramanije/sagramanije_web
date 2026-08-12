@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  experimental: {
+    // Le locandine arrivano come multipart nelle Server Actions. Il limite
+    // include anche l'overhead del form, non soltanto i byte del file.
+    serverActions: {
+      bodySizeLimit: "11mb",
+    },
+  },
   images: {
     // Le locandine vengono già ridimensionate e convertite in WebP dalla
     // Route Handler /locandina. Così il loader predefinito non consuma
