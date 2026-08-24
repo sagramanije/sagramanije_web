@@ -356,7 +356,7 @@ export async function analizzaLocandina(
     const prompt = `Analizza la locandina allegata di una sagra/evento.
 Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array con un massimo di 50 oggetti.
 Ogni oggetto deve avere questi campi esatti:
-- "giorno": stringa (formato YYYY-MM-DD se riesci a dedurlo, altrimenti stringa vuota o omettilo)
+- "giorno": stringa (formato YYYY-MM-DD se riesci a dedurlo, se non capisci l'anno usa quello corrente, altrimenti stringa vuota o omettilo)
 - "oraInizio": stringa (formato HH:MM, es. "19:00", se presente, altrimenti omettilo)
 - "oraFine": stringa (formato HH:MM, se presente, altrimenti omettilo)
 - "titolo": stringa (il titolo dell'evento, es. "Apertura Stand")

@@ -263,13 +263,13 @@ export async function analizzaSagra(
 Estrai le informazioni principali e restituiscile rigorosamente come JSON (un singolo oggetto).
 Campi richiesti:
 - "nomeSagra": stringa (il nome principale)
-- "dataInizio": stringa (YYYY-MM-DD, deducila se possibile)
+- "dataInizio": stringa (YYYY-MM-DD, deducila se possibile, fai sempre riferimento all'anno corrente se non lo capisci)
 - "dataFine": stringa (YYYY-MM-DD, deducila se c'è un periodo, se è un giorno solo metti la stessa data di inizio)
 - "oraInizio": stringa (HH:MM, se presente)
 - "citta": stringa (città in cui si svolge)
 - "provincia": stringa (codice a 2 lettere, es. "TE", "AQ", "CH", "PE")
 - "linkPaginaUfficiale": stringa (se c'è un sito web o pagina Facebook/Instagram indicata)
-- "descrizione": stringa (una descrizione accattivante basata sulle info, max 300 caratteri)
+- "descrizione": stringa (una descrizione accattivante basata sulle info, max 600 caratteri)
 
 Restituisci SOLO il JSON valido.`;
 
