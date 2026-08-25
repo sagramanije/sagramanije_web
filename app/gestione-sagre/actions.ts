@@ -269,7 +269,7 @@ Campi richiesti:
 - "citta": stringa (città in cui si svolge)
 - "provincia": stringa (codice a 2 lettere, es. "TE", "AQ", "CH", "PE")
 - "linkPaginaUfficiale": stringa (se c'è un sito web o pagina Facebook/Instagram indicata)
-- "descrizione": stringa (una descrizione accattivante basata sulle info, max 600 caratteri)
+- "descrizione": stringa (descrizione coinvolgente e ben scritta basata sulle info della locandina. Organizza il testo rigorosamente in 2-3 paragrafi distinti separati da un a capo "\\n", ad esempio: 1° paragrafo su atmosfera e contesto dell'evento, 2° paragrafo su specialità culinarie e stand gastronomici, 3° paragrafo su musica, spettacoli o info utili. Evita assolutamente un unico blocco di testo continuo).
 
 Restituisci SOLO il JSON valido.`;
 
