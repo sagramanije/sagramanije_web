@@ -114,11 +114,6 @@ function leggiVoci(formData: FormData): VoceProgramma[] {
   return Array.from({ length: totale }, (_, indice) => {
     const oraInizio = orario(formData, `ora_inizio_${indice}`);
     const oraFine = orario(formData, `ora_fine_${indice}`);
-    if (oraInizio && oraFine && oraFine < oraInizio) {
-      throw new ErroreValidazione(
-        `Nell’attività ${indice + 1} l’ora di fine precede quella di inizio.`,
-      );
-    }
 
     return {
       giorno: data(formData, `giorno_${indice}`),
