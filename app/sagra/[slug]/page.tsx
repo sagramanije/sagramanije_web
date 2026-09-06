@@ -6,6 +6,8 @@ import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import StripedPlaceholder from "../../components/striped-placeholder";
 import ProgrammaSagra from "../../components/programma-sagra";
+import SagraMeteo from "../../components/sagra-meteo";
+import CarovanaWhatsApp from "../../components/carovana-whatsapp";
 import Image from "next/image";
 import {
   eConclusa,
@@ -18,6 +20,7 @@ import {
   metaDescrizione,
   paragrafi,
   riassunto,
+  toISO,
 } from "../../../lib/sagre";
 import { getProgrammaSagra } from "../../../lib/programma";
 import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
@@ -239,6 +242,30 @@ export default async function SagraPage({ params }: Props) {
             </a>
           ) : null}
         </div>
+
+        {/* Carovana WhatsApp per organizzare la comitiva */}
+        {!conclusa && (
+          <CarovanaWhatsApp
+            nomeSagra={sagra.nome_sagra}
+            citta={sagra.citta}
+            provincia={sagra.provincia}
+            dataFormatted={formatIntervallo(sagra)}
+            url={`${SITE_URL}/sagra/${sagra.slug}`}
+          />
+        )}
+
+        {/* Previsioni meteo interattive per la sagra */}
+        {!conclusa ? (
+          <SagraMeteo
+            lat={sagra.lat}
+            leng={sagra.leng}
+            citta={sagra.citta}
+            nomeSagra={sagra.nome_sagra}
+            dataInizioStr={sagra.data_inizio ? toISO(sagra.data_inizio) : null}
+            dataFineStr={sagra.data_fine ? toISO(sagra.data_fine) : null}
+            oraInizio={sagra.ora_inizio}
+          />
+        ) : null}
 
         <section className="mt-14 rounded-3xl bg-surface p-8">
           <h2 className="font-title text-2xl">Trovala sulla mappa</h2>

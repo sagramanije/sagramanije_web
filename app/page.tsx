@@ -13,6 +13,7 @@ import StoreBadges from "./components/store-badges";
 import { EMAIL } from "./data";
 import { Analytics } from "@vercel/analytics/next";
 import ProssimeSagre from "./components/prossime-sagre";
+import SezioneRoulette from "./components/sezione-roulette";
 
 // La sezione "prossime sagre" legge l'API: rigenera la home ogni 6 ore.
 export const revalidate = 21_600;
@@ -112,6 +113,9 @@ export default function Home() {
 
         {/* Prossime sagre (dati veri dall'API) */}
         <ProssimeSagre />
+
+        {/* Tocc' a 'ndà: La Roulette della Sagra */}
+        <SezioneRoulette />
 
         {/* Schermate */}
         <section id="schermate" className="py-16">

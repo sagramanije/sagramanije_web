@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import EventCard from "../../components/event-card";
+import RouletteSagra from "../../components/roulette-sagra";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import {
   eConclusa,
+  formatIntervallo,
   getSagreAbruzzo,
+  locandinaProxyUrl,
   mesePassato,
   mesiConSagre,
   PROVINCE,
@@ -131,6 +134,24 @@ export default async function SagreAbruzzoPage() {
             </Link>
           ))}
         </nav>
+
+        {/* Tocc' a 'ndà: La Roulette della Sagra */}
+        <div className="mt-12">
+          <RouletteSagra
+            sagre={sagre
+              .filter((s) => !eConclusa(s))
+              .map((s) => ({
+                id: s.id,
+                nome_sagra: s.nome_sagra,
+                slug: s.slug,
+                citta: s.citta,
+                provincia: s.provincia,
+                category: s.category,
+                locandinaUrl: locandinaProxyUrl(s, "card"),
+                dataFormatted: formatIntervallo(s),
+              }))}
+          />
+        </div>
 
         {mesi.map((m) => {
           const delMese = sagreNelMese(sagre, m);
