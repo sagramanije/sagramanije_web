@@ -28,6 +28,7 @@ interface SagraMeteoProps {
   dataInizioStr: string | null; // formato YYYY-MM-DD
   dataFineStr: string | null;   // formato YYYY-MM-DD
   oraInizio?: string | null;
+  className?: string;
 }
 
 interface HourlyItem {
@@ -208,6 +209,7 @@ export default function SagraMeteo({
   nomeSagra,
   dataInizioStr,
   dataFineStr,
+  className = "mt-8",
 }: SagraMeteoProps) {
   const isInvalidCoords = !lat || !leng || isNaN(lat) || isNaN(leng);
 
@@ -363,7 +365,7 @@ export default function SagraMeteo({
   // Se la sagra è troppo in là nel tempo
   if (tooFarInFuture) {
     return (
-      <section className="mt-8 overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60">
+      <section className={`overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 ${className}`}>
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600">
             <CloudSun size={22} />
@@ -394,7 +396,7 @@ export default function SagraMeteo({
   if (loading) {
     return (
       <section
-        className="mt-8 rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60"
+        className={`overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 ${className}`}
         aria-labelledby="meteo-sagra-titolo"
       >
         <div className="flex items-center gap-3">
@@ -450,7 +452,7 @@ export default function SagraMeteo({
 
   return (
     <section
-      className="mt-8 overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 shadow-xs"
+      className={`overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 shadow-xs ${className}`}
       aria-labelledby="meteo-sagra-titolo"
     >
       {/* Intestazione */}
@@ -606,7 +608,7 @@ export default function SagraMeteo({
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider opacity-80">
-            Il consiglio della Pro Loco
+            Il consiglio di Sagramanije
           </p>
           <p className="mt-0.5 font-title text-sm font-bold sm:text-base">
             {currentDay.verdetto.titolo}

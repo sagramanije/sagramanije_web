@@ -9,6 +9,7 @@ interface CarovanaWhatsAppProps {
   provincia: string | null;
   dataFormatted: string;
   url: string;
+  className?: string;
 }
 
 export default function CarovanaWhatsApp({
@@ -17,6 +18,7 @@ export default function CarovanaWhatsApp({
   provincia,
   dataFormatted,
   url,
+  className = "mt-8",
 }: CarovanaWhatsAppProps) {
   const [copied, setCopied] = useState(false);
 
@@ -28,7 +30,7 @@ export default function CarovanaWhatsApp({
     `📅 *Quando:* ${dataFormatted}`,
     `🚗 *Mappa, orari e meteo:* ${url}`,
     "",
-    "Chi viene stasera nella carovana? 🍻",
+    "Chi ve, arspunnet però? 🍻",
   ].join("\n");
 
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messaggio)}`;
@@ -44,7 +46,7 @@ export default function CarovanaWhatsApp({
   };
 
   return (
-    <div className="mt-8 overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 shadow-xs">
+    <div className={`overflow-hidden rounded-3xl bg-surface p-6 sm:p-7 border border-beige/60 shadow-xs ${className}`}>
       <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#25D366]/15 text-[#128C7E]">
           <Users size={22} />
@@ -77,7 +79,7 @@ export default function CarovanaWhatsApp({
           className="flex flex-1 sm:flex-initial items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-6 py-3.5 font-bold text-white shadow-xs transition-all hover:bg-[#20bd5a] hover:-translate-y-0.5"
         >
           <MessageCircle size={18} />
-          Invia su WhatsApp
+          WhatsApp
         </a>
 
         <button
@@ -93,7 +95,7 @@ export default function CarovanaWhatsApp({
           ) : (
             <>
               <Copy size={16} className="text-muted" />
-              <span>Copia testo</span>
+              <span>Copia</span>
             </>
           )}
         </button>
