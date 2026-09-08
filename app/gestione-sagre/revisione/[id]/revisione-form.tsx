@@ -204,6 +204,17 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
             placeholder="https://…"
             className={INPUT}
           />
+          {bozza.locandina ? (
+            <div className="mt-3 overflow-hidden rounded-2xl border border-beige bg-beige/30 p-3">
+              <p className="mb-2 text-xs font-bold text-muted">Anteprima locandina</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bozza.locandina}
+                alt={`Locandina ${bozza.nome_sagra}`}
+                className="max-h-96 w-auto max-w-full rounded-xl object-contain shadow-sm"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div>
