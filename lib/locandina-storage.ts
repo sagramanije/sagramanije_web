@@ -130,3 +130,48 @@ export async function caricaLocandina(
     ? caricaSuMinio(buffer, mimeType, estensione)
     : caricaSuCloudinary(buffer);
 }
+
+export async function eliminaLocandinaDaMinio(locandinaUrl: string): Promise<void> {
+  if (!locandinaUrl || typeof locandinaUrl !== "string") return;
+
+  try {
+    const endpoint = urlEndpointMinio();
+    const bucket = envObbligatoria("MINIO_BUCKET");
+    const basePubblica =
+      process.env.MINIO_PUBLIC_URL?.trim() || `${endpoint.origin}/${bucket}`;
+
+    const urlPulito = locandinaUrl.trim();
+    const basePulita = basePubblica.endsWith("/") ? basePubblica : `${basePubblica}/`;
+
+    // Se l'URL non appartiene alla base pubblica di MinIO, ignoriamo
+    if (!urlPulito.startsWith(basePubblica)) {
+      return;
+    }
+
+    const relativo = urlPulito.startsWith(basePulita)
+      ? urlPulito.slice(basePulita.length)
+      : urlPulito.slice(basePubblica.length).replace(/^\/+/, "");
+
+    if (!relativo) return;
+
+    const nomeOggetto = decodeURIComponent(relativo);
+
+    const client = new MinioClient({
+      endPoint: endpoint.hostname,
+      port: endpoint.port
+        ? Number(endpoint.port)
+        : endpoint.protocol === "https:"
+          ? 443
+          : 80,
+      useSSL: endpoint.protocol === "https:",
+      accessKey: envObbligatoria("MINIO_ACCESS_KEY"),
+      secretKey: envObbligatoria("MINIO_SECRET_KEY"),
+    });
+
+    await client.removeObject(bucket, nomeOggetto);
+    console.info(`[MinIO] Locandina eliminata con successo: ${nomeOggetto}`);
+  } catch (errore) {
+    console.error("[MinIO] Errore durante l'eliminazione della locandina:", errore);
+  }
+}
+

@@ -1,10 +1,11 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import type { ResultSetHeader } from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { redirect } from "next/navigation";
 import { sessioneAdminValida } from "../../../lib/admin-auth";
 import { conConnessioneDb } from "../../../lib/db";
+import { eliminaLocandinaDaMinio } from "../../../lib/locandina-storage";
 import {
   coordinata,
   dataIso,
@@ -139,18 +140,32 @@ export async function eliminaBozza(
   }
 
   try {
-    const [risultato] = await conConnessioneDb((connessione) =>
-      connessione.execute<ResultSetHeader>(
+    let locandinaDaEliminare: string | null = null;
+
+    const [risultato] = await conConnessioneDb(async (connessione) => {
+      const [righe] = await connessione.execute<(RowDataPacket & { locandina: string | null })[]>(
+        "SELECT locandina FROM sagre_pre_prod WHERE id = ?",
+        [preProdId],
+      );
+      locandinaDaEliminare = righe[0]?.locandina ?? null;
+
+      return connessione.execute<ResultSetHeader>(
         "DELETE FROM sagre_pre_prod WHERE id = ?",
         [preProdId],
-      ),
-    );
+      );
+    });
+
     if (risultato.affectedRows === 0) {
       return {
         esito: "errore",
         messaggio:
           "La bozza risulta già rimossa: forse eliminata da un'altra sessione.",
       };
+    }
+
+    // Se la bozza aveva una locandina salvata su MinIO, la eliminiamo
+    if (locandinaDaEliminare) {
+      await eliminaLocandinaDaMinio(locandinaDaEliminare);
     }
   } catch (errore) {
     console.error("Eliminazione bozza fallita", errore);
