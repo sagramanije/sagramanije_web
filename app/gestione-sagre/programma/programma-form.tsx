@@ -167,6 +167,12 @@ export default function ProgrammaForm({
     try {
       const formData = new FormData();
       formData.append("locandina", file);
+      if (sagraSelezionata?.dataInizio) {
+        formData.append("data_inizio_sagra", sagraSelezionata.dataInizio);
+      }
+      if (sagraSelezionata?.dataFine) {
+        formData.append("data_fine_sagra", sagraSelezionata.dataFine);
+      }
       const risultato = await analizzaLocandina(formData);
 
       if (risultato.esito === "successo" && risultato.data.length > 0) {

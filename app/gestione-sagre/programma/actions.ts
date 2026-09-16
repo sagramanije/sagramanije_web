@@ -281,7 +281,10 @@ import {
 
 class ErroreRispostaAi extends Error {}
 
-function normalizzaRispostaProgramma(testoRisposta: string): Partial<VoceProgramma>[] {
+function normalizzaRispostaProgramma(
+  testoRisposta: string,
+  annoRiferimento: number,
+): Partial<VoceProgramma>[] {
   let valore: unknown;
 
   try {
@@ -302,8 +305,25 @@ function normalizzaRispostaProgramma(testoRisposta: string): Partial<VoceProgram
     }
 
     const item = elemento as Record<string, unknown>;
+
+    let giorno: string | undefined;
+    if (typeof item.giorno === "string" && item.giorno.trim()) {
+      const giornoTrim = item.giorno.trim();
+      const match = /^(\d{4})-(\d{2}-\d{2})$/.exec(giornoTrim);
+      if (match) {
+        const annoEstratto = parseInt(match[1], 10);
+        if (annoEstratto < annoRiferimento) {
+          giorno = `${annoRiferimento}-${match[2]}`;
+        } else {
+          giorno = giornoTrim;
+        }
+      } else {
+        giorno = giornoTrim;
+      }
+    }
+
     return {
-      giorno: typeof item.giorno === "string" ? item.giorno : undefined,
+      giorno,
       oraInizio: typeof item.oraInizio === "string" ? item.oraInizio : undefined,
       oraFine: typeof item.oraFine === "string" ? item.oraFine : undefined,
       titolo:
@@ -344,14 +364,33 @@ export async function analizzaLocandina(
   }
 
   try {
+    const dataInizioSagra =
+      typeof formData.get("data_inizio_sagra") === "string"
+        ? (formData.get("data_inizio_sagra") as string).trim()
+        : null;
+    const dataFineSagra =
+      typeof formData.get("data_fine_sagra") === "string"
+        ? (formData.get("data_fine_sagra") as string).trim()
+        : null;
+
+    const annoCorrente = new Date().getFullYear();
+    const annoRiferimento = dataInizioSagra
+      ? parseInt(dataInizioSagra.slice(0, 4), 10) || annoCorrente
+      : annoCorrente;
+
+    const contestoDateSagra = dataInizioSagra
+      ? `La sagra si svolge nel periodo dal ${dataInizioSagra} al ${dataFineSagra ?? dataInizioSagra}. L'anno di riferimento è ${annoRiferimento}.`
+      : `L'anno corrente di riferimento è ${annoRiferimento}.`;
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const genAI = new GoogleGenAI({ apiKey });
 
     const prompt = `Analizza la locandina allegata di una sagra/evento.
+${contestoDateSagra}
 Estrai il programma degli eventi e restituiscilo rigorosamente come JSON, che deve essere un array con un massimo di 50 oggetti.
 Ogni oggetto deve avere questi campi esatti:
-- "giorno": stringa (formato YYYY-MM-DD se riesci a dedurlo, se non capisci l'anno usa quello corrente, altrimenti stringa vuota o omettilo)
+- "giorno": stringa (formato YYYY-MM-DD. Se nella locandina non è specificato l'anno, usa TASSATIVAMENTE l'anno ${annoRiferimento} e non usare MAI anni precedenti. Altrimenti se non c'è una data, omettilo o stringa vuota)
 - "oraInizio": stringa (formato HH:MM, es. "19:00", se presente, altrimenti omettilo)
 - "oraFine": stringa (formato HH:MM, se presente, altrimenti omettilo)
 - "titolo": stringa (il titolo dell'evento, es. "Apertura Stand")
@@ -394,7 +433,10 @@ Restituisci SOLO il JSON valido e nient'altro.`;
       }
 
       try {
-        const data = normalizzaRispostaProgramma(result.text ?? "");
+        const data = normalizzaRispostaProgramma(
+          result.text ?? "",
+          annoRiferimento,
+        );
         return { esito: "successo", data };
       } catch (error) {
         if (!(error instanceof ErroreRispostaAi)) throw error;

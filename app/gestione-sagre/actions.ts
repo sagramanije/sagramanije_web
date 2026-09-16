@@ -259,12 +259,15 @@ export async function analizzaSagra(
     
     const genAI = new GoogleGenAI({ apiKey });
 
+    const annoCorrente = new Date().getFullYear();
+
     const prompt = `Analizza la locandina allegata di una sagra/evento.
+L'anno corrente di riferimento è ${annoCorrente}.
 Estrai le informazioni principali e restituiscile rigorosamente come JSON (un singolo oggetto).
 Campi richiesti:
 - "nomeSagra": stringa (il nome principale)
-- "dataInizio": stringa (YYYY-MM-DD, deducila se possibile, fai sempre riferimento all'anno corrente se non lo capisci)
-- "dataFine": stringa (YYYY-MM-DD, deducila se c'è un periodo, se è un giorno solo metti la stessa data di inizio)
+- "dataInizio": stringa (YYYY-MM-DD, deducila se possibile. Se nella locandina non è specificato l'anno, usa tassativamente l'anno corrente ${annoCorrente} e mai anni precedenti)
+- "dataFine": stringa (YYYY-MM-DD, deducila se c'è un periodo, se è un giorno solo metti la stessa data di inizio. Se nella locandina non è specificato l'anno, usa tassativamente l'anno corrente ${annoCorrente} e mai anni precedenti)
 - "oraInizio": stringa (HH:MM, se presente)
 - "citta": stringa (città in cui si svolge)
 - "provincia": stringa (codice a 2 lettere, es. "TE", "AQ", "CH", "PE")
@@ -282,10 +285,23 @@ Restituisci SOLO il JSON valido.`;
     const testoRisposta = result.text ?? "";
     const json = JSON.parse(testoRisposta);
 
+    function correggiAnnoSePassato(dataStr: unknown): string | undefined {
+      if (typeof dataStr !== "string") return undefined;
+      const trim = dataStr.trim();
+      const match = /^(\d{4})-(\d{2}-\d{2})$/.exec(trim);
+      if (match) {
+        const anno = parseInt(match[1], 10);
+        if (anno < annoCorrente) {
+          return `${annoCorrente}-${match[2]}`;
+        }
+      }
+      return trim || undefined;
+    }
+
     const dati: DatiEstrattiSagra = {
       nomeSagra: json.nomeSagra,
-      dataInizio: json.dataInizio,
-      dataFine: json.dataFine,
+      dataInizio: correggiAnnoSePassato(json.dataInizio),
+      dataFine: correggiAnnoSePassato(json.dataFine),
       oraInizio: json.oraInizio,
       citta: json.citta,
       provincia: json.provincia,
