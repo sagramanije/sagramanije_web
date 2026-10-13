@@ -314,7 +314,7 @@ async function scaricaEValidaImmagine(
 
   // Verifica se il formato è tra quelli direttamente supportati dallo storage (jpeg, png, webp)
   let mimeType = "image/jpeg";
-  let bufferFinale = bufferIniziale;
+  let bufferFinale: Buffer = bufferIniziale;
 
   if (metadata.format === "jpeg") {
     mimeType = "image/jpeg";
@@ -324,7 +324,8 @@ async function scaricaEValidaImmagine(
     mimeType = "image/webp";
   } else {
     // Per formati come avif, heic, gif o altri, convertiamo in WebP ad alta qualità
-    bufferFinale = await image.webp({ quality: 90 }).toBuffer();
+    const bufferWebp = await image.webp({ quality: 90 }).toBuffer();
+    bufferFinale = Buffer.from(bufferWebp);
     mimeType = "image/webp";
   }
 
