@@ -5,7 +5,12 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { redirect } from "next/navigation";
 import { sessioneAdminValida } from "../../../lib/admin-auth";
 import { conConnessioneDb } from "../../../lib/db";
-import { eliminaLocandinaDaMinio } from "../../../lib/locandina-storage";
+import {
+  caricaLocandina,
+  eliminaLocandinaDaMinio,
+  type DestinazioneLocandina,
+} from "../../../lib/locandina-storage";
+import { estraiImmagineDaLinkSocial } from "../../../lib/social-image-extractor";
 import {
   coordinata,
   dataIso,
@@ -58,7 +63,7 @@ export async function convalidaSagra(
     }
 
     const categoria = testo(formData, "category", 100) ?? "sagra";
-    if (!["sagra", "Evento", "Altro"].includes(categoria)) {
+    if (!["sagra", "Evento", "Altro", "Sagra"].includes(categoria)) {
       throw new ErroreValidazione("La categoria selezionata non è valida.");
     }
 
@@ -178,3 +183,89 @@ export async function eliminaBozza(
 
   redirect("/gestione-sagre/revisione");
 }
+
+export type RisultatoSalvataggioSocial =
+  | {
+      esito: "successo";
+      urlLocandina: string;
+      messaggio: string;
+    }
+  | {
+      esito: "errore";
+      messaggio: string;
+    };
+
+/**
+ * Estrae la foto/locandina da un post social (Facebook, Instagram, o link web),
+ * la carica nello storage (MinIO o Cloudinary) e aggiorna la riga della bozza in sagre_pre_prod.
+ */
+export async function salvaLocandinaDaSocial({
+  preProdId,
+  urlSocial,
+  destinazione = "minio",
+}: {
+  preProdId: number;
+  urlSocial: string;
+  destinazione?: DestinazioneLocandina;
+}): Promise<RisultatoSalvataggioSocial> {
+  if (!(await sessioneAdminValida())) {
+    return {
+      esito: "errore",
+      messaggio:
+        "La sessione è scaduta. Ricarica la pagina ed effettua l’accesso.",
+    };
+  }
+
+  if (!Number.isInteger(preProdId) || preProdId <= 0) {
+    return { esito: "errore", messaggio: "Identificativo bozza non valido." };
+  }
+
+  const link = urlSocial?.trim();
+  if (!link) {
+    return {
+      esito: "errore",
+      messaggio: "Inserisci l'URL del post social prima di estrarre la foto.",
+    };
+  }
+
+  try {
+    const { buffer, mimeType } = await estraiImmagineDaLinkSocial(link);
+
+    const urlLocandina = await caricaLocandina(buffer, mimeType, destinazione);
+
+    await conConnessioneDb(async (connessione) => {
+      const [righe] = await connessione.execute<
+        (RowDataPacket & { locandina: string | null })[]
+      >("SELECT locandina FROM sagre_pre_prod WHERE id = ?", [preProdId]);
+
+      const vecchiaLocandina = righe[0]?.locandina ?? null;
+
+      const [aggiornamento] = await connessione.execute<ResultSetHeader>(
+        "UPDATE sagre_pre_prod SET locandina = ?, link_pagina_ufficiale = COALESCE(NULLIF(link_pagina_ufficiale, ''), ?) WHERE id = ?",
+        [urlLocandina, link, preProdId],
+      );
+
+      if (aggiornamento.affectedRows === 0) {
+        throw new Error("La bozza non è stata trovata o è già stata rimossa.");
+      }
+
+      if (vecchiaLocandina && vecchiaLocandina !== urlLocandina) {
+        await eliminaLocandinaDaMinio(vecchiaLocandina);
+      }
+    });
+
+    return {
+      esito: "successo",
+      urlLocandina,
+      messaggio: "Foto estratta e salvata correttamente nello storage!",
+    };
+  } catch (errore) {
+    console.error("Estrazione foto social fallita:", errore);
+    const messaggio =
+      errore instanceof Error
+        ? errore.message
+        : "Errore imprevisto durante l'estrazione della foto.";
+    return { esito: "errore", messaggio };
+  }
+}
+
