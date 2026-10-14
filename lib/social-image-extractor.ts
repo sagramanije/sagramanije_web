@@ -3,60 +3,390 @@ import "server-only";
 import sharp from "sharp";
 
 /**
- * Decodifica entità HTML e caratteri escape Unicode in stringhe JSON/HTML
+ * Decodifica entità HTML e caratteri escape Unicode/JSON.
  */
-function decodificaStringa(valore: string): string {
-  return valore
+export function decodificaStringa(valore: string): string {
+  if (!valore) return "";
+  let res = valore
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/\\u0026/g, "&")
+    .replace(/\\u003C/gi, "<")
+    .replace(/\\u003E/gi, ">")
     .replace(/\\\//g, "/")
+    .replace(/\\"/g, '"')
     .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16)),
     )
     .trim();
+
+  if (
+    (res.startsWith('"') && res.endsWith('"')) ||
+    (res.startsWith("'") && res.endsWith("'"))
+  ) {
+    res = res.slice(1, -1).trim();
+  }
+  return res;
 }
 
 /**
- * Tenta di rimuovere i parametri di crop forzato quadrato (1:1) o dimensioni ridotte
- * generati da Meta CDN (Facebook / Instagram).
+ * Estrae lo shortcode da qualsiasi URL Instagram valido, inclusi quelli che
+ * contengono l'username del profilo prima di /p/ (es. instagram.com/nome_profilo/p/SHORTCODE/)
+ * o parametri di query/share.
+ */
+export function estraiShortcodeInstagram(url: string): string | null {
+  if (!url) return null;
+  // Cattura il segmento dopo /p/, /reel/, /reels/ o /tv/
+  const m = /(?:\/|^)(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i.exec(url);
+  if (m?.[1]) return m[1];
+
+  // Fallback per URL abbreviati instagr.am/p/XYZ
+  const m2 = /instagr\.am\/p\/([A-Za-z0-9_-]+)/i.exec(url);
+  if (m2?.[1]) return m2[1];
+
+  return null;
+}
+
+/**
+ * Genera varianti dello shortcode per risolvere ambiguità visive comuni
+ * tra caratteri simili nei font sans-serif (es. 'l' minuscola vs 'I' maiuscola, '1', '0' vs 'O').
+ */
+export function generaVariantiShortcode(code: string): string[] {
+  const varianti: string[] = [code];
+  const aggiungi = (v: string) => {
+    if (v && v.length === code.length && !varianti.includes(v)) {
+      varianti.push(v);
+    }
+  };
+
+  // Scambia 'l' (elle minuscola) con 'I' (i maiuscola)
+  if (code.includes("l")) {
+    aggiungi(code.replace(/l/g, "I"));
+  }
+  // Scambia 'I' (i maiuscola) con 'l' (elle minuscola)
+  if (code.includes("I")) {
+    aggiungi(code.replace(/I/g, "l"));
+  }
+  // Scambia '1' con 'l' o 'I'
+  if (code.includes("1")) {
+    aggiungi(code.replace(/1/g, "l"));
+    aggiungi(code.replace(/1/g, "I"));
+  }
+  // Scambia '0' e 'O'
+  if (code.includes("0")) {
+    aggiungi(code.replace(/0/g, "O"));
+  }
+  if (code.includes("O")) {
+    aggiungi(code.replace(/O/g, "0"));
+  }
+
+  return varianti;
+}
+
+/**
+ * Converte uno shortcode Instagram nel relativo Media ID decimale.
+ */
+export function shortcodeToMediaId(shortcode: string): string {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  let id = BigInt(0);
+  for (let i = 0; i < shortcode.length; i++) {
+    const char = shortcode[i];
+    const index = alphabet.indexOf(char);
+    if (index === -1) continue;
+    id = id * BigInt(64) + BigInt(index);
+  }
+  return id.toString();
+}
+
+/**
+ * Rileva se un URL di Meta CDN (Instagram / Facebook) contiene parametri
+ * di ritaglio (crop 1:1 o bounding box quadrato forzato).
+ */
+export function haParametriCrop(urlStr: string): boolean {
+  if (!urlStr) return false;
+  // Direttiva di crop esplicita per rettangoli su Meta CDN: stp=c[x].[y].[w].[h]a_
+  if (/[?&]stp=[^&]*\bc\d+\.\d+\.\d+\.\d+a_/i.test(urlStr)) return true;
+  // Dimensionamento forzato a quadrato nei percorsi CDN
+  if (/\/(s\d+x\d+)\//i.test(urlStr)) return true;
+  if (/_(s\d+x\d+)[._]/i.test(urlStr)) return true;
+  // Query parameter di ritaglio quadrato
+  if (/[?&]stp=[^&]*\bs\d+x\d+\b/i.test(urlStr)) return true;
+  return false;
+}
+
+/**
+ * Tenta di rimuovere i parametri di crop forzato (se possibile senza invalidare la firma HMAC).
  */
 export function rimuoviCropMetaCdn(urlStr: string): string {
   try {
     let pulito = urlStr;
-
-    // Rimuove la direttiva di crop specifica per rettangoli stp=c[x].[y].[w].[h]a_
     if (/[?&]stp=.*?\bc\d+\.\d+\.\d+\.\d+a_/.test(pulito)) {
       pulito = pulito.replace(/(\bc\d+\.\d+\.\d+\.\d+a_)/g, "");
     }
-
-    // Rimuove indicatori di crop quadrato nei percorsi /s640x640/ o simili
     pulito = pulito.replace(/\/(s\d+x\d+)\//g, "/");
-
     return pulito;
   } catch {
     return urlStr;
   }
 }
 
-/**
- * Estrae l'URL della locandina o foto principale da un post Instagram.
- */
-async function estraiImmagineDaInstagram(postUrl: string): Promise<string[]> {
-  const candidati: string[] = [];
+interface CandidatoFoto {
+  url: string;
+  priorita: number;
+  larghezzaPresunta?: number;
+  altezzaPresunta?: number;
+  fonte: string;
+}
 
-  // Estrae lo shortcode (es. p/C-XYZ... o reel/C-XYZ...)
-  const matchCode = /(?:instagram\.com\/(?:p|reel|tv)\/|instagr\.am\/p\/)([A-Za-z0-9_-]+)/i.exec(
-    postUrl,
+function aggiungiCandidato(
+  lista: CandidatoFoto[],
+  urlGrezzo: string,
+  prioritaBase: number,
+  fonte: string,
+  larghezza?: number,
+  altezza?: number,
+): void {
+  const url = decodificaStringa(urlGrezzo);
+  if (!url || !url.startsWith("http")) return;
+
+  // Esclude avatar, icone, gif o tracking pixel
+  if (
+    url.includes("/150x150/") ||
+    url.includes("/s150x150/") ||
+    url.includes("/p50x50/") ||
+    url.includes("/s50x50/") ||
+    url.includes("safe_image.php") ||
+    url.includes("blank.gif") ||
+    url.includes("/rsrc.php/")
+  ) {
+    return;
+  }
+
+  let priorita = prioritaBase;
+  const isCropped = haParametriCrop(url);
+  if (isCropped) {
+    // I ritagli forzati hanno priorità bassissima di riserva
+    priorita = Math.min(priorita, 50);
+  } else if (larghezza && altezza) {
+    if (altezza > larghezza * 1.05) {
+      // Locandina verticale (es. 4:5, 1080x1350 o 1572w): priorità massima
+      priorita += 800;
+    }
+    priorita += Math.min(400, Math.floor((larghezza * altezza) / 10_000));
+  } else if (larghezza) {
+    priorita += Math.min(400, larghezza);
+  }
+
+  lista.push({
+    url,
+    priorita,
+    larghezzaPresunta: larghezza,
+    altezzaPresunta: altezza,
+    fonte,
+  });
+}
+
+/**
+ * Estrae le immagini e le risoluzioni non tagliate presenti nei tag <img> e <source>
+ * dell'embed di Instagram (specialmente da class="EmbeddedMediaImage" e attributo srcset).
+ */
+function estraiImmaginiDaHtmlEmbed(
+  html: string,
+  candidati: CandidatoFoto[],
+  fonte: string,
+): boolean {
+  let trovataNonCroppata = false;
+
+  // 1. Cerca il tag EmbeddedMediaImage principale dell'embed
+  const imgMatches = html.matchAll(
+    /<img[^>]*class="[^"]*EmbeddedMediaImage[^"]*"[^>]*>/gi,
   );
-  const shortcode = matchCode?.[1];
+  for (const m of imgMatches) {
+    const tag = m[0];
+
+    // Estrae l'attributo srcset (contiene le varie risoluzioni: 1572w, 1080w, 720w, ecc.)
+    const srcsetMatch = /srcset="([^"]+)"/i.exec(tag);
+    if (srcsetMatch) {
+      const rawEntries = srcsetMatch[1].split(",");
+      for (const entry of rawEntries) {
+        const parti = entry.trim().split(/\s+/);
+        if (parti.length >= 1) {
+          const u = decodificaStringa(parti[0]);
+          const w = parti[1]
+            ? parseInt(parti[1].replace(/\D/g, ""), 10)
+            : undefined;
+          if (u && u.startsWith("http")) {
+            const isCropped = haParametriCrop(u);
+            if (!isCropped) {
+              trovataNonCroppata = true;
+            }
+            // Gli URL in srcset che NON contengono crop (es. stp=dst-jpg_e35_tt6) sono le versioni originali
+            const priorita = isCropped ? 50 : 2000 + (w ?? 0);
+            aggiungiCandidato(
+              candidati,
+              u,
+              priorita,
+              `${fonte}:EmbeddedMediaImage:srcset:${w ?? "auto"}`,
+              w,
+            );
+          }
+        }
+      }
+    }
+
+    // Estrae src
+    const srcMatch = /src="([^"]+)"/i.exec(tag);
+    if (srcMatch) {
+      const u = decodificaStringa(srcMatch[1]);
+      if (u && u.startsWith("http")) {
+        const isCropped = haParametriCrop(u);
+        if (!isCropped) trovataNonCroppata = true;
+        const priorita = isCropped ? 40 : 1800;
+        aggiungiCandidato(
+          candidati,
+          u,
+          priorita,
+          `${fonte}:EmbeddedMediaImage:src`,
+        );
+      }
+    }
+  }
+
+  // 2. Cerca altri attributi srcset o src con CDN scontent
+  const allSrcsets = html.matchAll(/(?:srcset|src)="([^"]+)"/gi);
+  for (const m of allSrcsets) {
+    const attrVal = m[1];
+    if (attrVal.includes(",")) {
+      const rawEntries = attrVal.split(",");
+      for (const entry of rawEntries) {
+        const parti = entry.trim().split(/\s+/);
+        if (parti.length >= 1) {
+          const u = decodificaStringa(parti[0]);
+          const w = parti[1]
+            ? parseInt(parti[1].replace(/\D/g, ""), 10)
+            : undefined;
+          if (u && u.startsWith("http") && u.includes("scontent")) {
+            const isCropped = haParametriCrop(u);
+            if (!isCropped) trovataNonCroppata = true;
+            const priorita = isCropped ? 30 : 1200 + (w ?? 0);
+            aggiungiCandidato(candidati, u, priorita, `${fonte}:srcset`, w);
+          }
+        }
+      }
+    } else {
+      const u = decodificaStringa(attrVal);
+      if (u && u.startsWith("http") && u.includes("scontent")) {
+        const isCropped = haParametriCrop(u);
+        if (!isCropped) trovataNonCroppata = true;
+        const priorita = isCropped ? 30 : 1100;
+        aggiungiCandidato(candidati, u, priorita, `${fonte}:src`);
+      }
+    }
+  }
+
+  return trovataNonCroppata;
+}
+
+/**
+ * Scansiona payload JSON/HTML per chiavi display_resources, display_url o candidates
+ */
+function analizzaPayloadJsonInstagram(
+  testo: string,
+  candidati: CandidatoFoto[],
+  fonte: string,
+): void {
+  // 1. display_resources
+  const resMatches = testo.matchAll(
+    /(?:\\?"|&quot;)display_resources(?:\\?"|&quot;)\s*:\s*\[([\s\S]*?)\]/gi,
+  );
+  for (const rm of resMatches) {
+    const blocco = rm[1];
+    const oggetti = blocco.split(/\}(?:\s*,\s*\{|\s*\])/);
+    for (const ogg of oggetti) {
+      const srcM =
+        /(?:\\?"|&quot;)src(?:\\?"|&quot;)\s*:\s*(?:\\?"|&quot;)(https:[^"'\\]+)/i.exec(
+          ogg,
+        );
+      const wM =
+        /(?:\\?"|&quot;)config_width(?:\\?"|&quot;)\s*:\s*(\d+)/i.exec(ogg);
+      const hM =
+        /(?:\\?"|&quot;)config_height(?:\\?"|&quot;)\s*:\s*(\d+)/i.exec(ogg);
+      if (srcM) {
+        const w = wM ? parseInt(wM[1], 10) : undefined;
+        const h = hM ? parseInt(hM[1], 10) : undefined;
+        aggiungiCandidato(
+          candidati,
+          srcM[1],
+          1500,
+          `${fonte}:display_resources`,
+          w,
+          h,
+        );
+      }
+    }
+  }
+
+  // 2. image_versions2 candidates
+  const candMatches = testo.matchAll(
+    /(?:\\?"|&quot;)candidates(?:\\?"|&quot;)\s*:\s*\[([\s\S]*?)\]/gi,
+  );
+  for (const cm of candMatches) {
+    const blocco = cm[1];
+    const oggetti = blocco.split(/\}(?:\s*,\s*\{|\s*\])/);
+    for (const ogg of oggetti) {
+      const urlM =
+        /(?:\\?"|&quot;)url(?:\\?"|&quot;)\s*:\s*(?:\\?"|&quot;)(https:[^"'\\]+)/i.exec(
+          ogg,
+        );
+      const wM =
+        /(?:\\?"|&quot;)width(?:\\?"|&quot;)\s*:\s*(\d+)/i.exec(ogg);
+      const hM =
+        /(?:\\?"|&quot;)height(?:\\?"|&quot;)\s*:\s*(\d+)/i.exec(ogg);
+      if (urlM) {
+        const w = wM ? parseInt(wM[1], 10) : undefined;
+        const h = hM ? parseInt(hM[1], 10) : undefined;
+        aggiungiCandidato(
+          candidati,
+          urlM[1],
+          1500,
+          `${fonte}:candidates`,
+          w,
+          h,
+        );
+      }
+    }
+  }
+
+  // 3. display_url
+  const dUrls = testo.matchAll(
+    /(?:\\?"|&quot;)display_url(?:\\?"|&quot;)\s*:\s*(?:\\?"|&quot;)(https:[^"'\\]+)/gi,
+  );
+  for (const m of dUrls) {
+    aggiungiCandidato(candidati, m[1], 1300, `${fonte}:display_url`);
+  }
+}
+
+/**
+ * Estrae l'URL della locandina o foto principale da un post Instagram
+ * garantendo la massima risoluzione e preservando l'inquadratura originale (non ritagliata).
+ */
+async function estraiImmagineDaInstagram(
+  postUrl: string,
+): Promise<CandidatoFoto[]> {
+  const candidati: CandidatoFoto[] = [];
+
+  const shortcodeIniziale = estraiShortcodeInstagram(postUrl);
+  const variantiShortcode = shortcodeIniziale
+    ? generaVariantiShortcode(shortcodeIniziale)
+    : [];
 
   const browserHeaders = {
     "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
     Accept:
       "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -72,10 +402,11 @@ async function estraiImmagineDaInstagram(postUrl: string): Promise<string[]> {
     "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
   };
 
-  // 1. TENTATIVO VIA EMBED CAPTIONED: endpoint pubblico senza login che espone display_url HD e srcset non ritagliati
-  if (shortcode) {
+  // 1. TENTATIVO VIA EMBED CAPTIONED PER OGNI VARIANTE DELLO SHORTCODE
+  // È l'endpoint pubblico più ricco di metadati completi (srcset fino a 1572w non tagliati)
+  for (const code of variantiShortcode) {
     try {
-      const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
+      const embedUrl = `https://www.instagram.com/p/${code}/embed/captioned/`;
       const resp = await fetch(embedUrl, {
         headers: browserHeaders,
         signal: AbortSignal.timeout(10_000),
@@ -84,51 +415,99 @@ async function estraiImmagineDaInstagram(postUrl: string): Promise<string[]> {
       if (resp.ok) {
         const html = await resp.text();
 
-        // 1a. Cerca display_url nel payload JSON dell'embed
-        const dUrls = [...html.matchAll(/"display_url"\s*:\s*"([^"]+)"/g)];
-        for (const m of dUrls) {
-          const dec = decodificaStringa(m[1]);
-          if (dec.startsWith("http") && !dec.includes("150x150") && !dec.includes("avatar")) {
-            candidati.push(dec);
-          }
+        // Se l'embed dice che il post è rotto o rimosso (spesso accade con varianti errate di 'l' vs 'I')
+        if (
+          html.includes("EmbedBrokenMedia") ||
+          html.includes("ebmMessage") ||
+          html.includes("The link to this photo or video may be broken")
+        ) {
+          continue;
         }
 
-        // 1b. Cerca nei tag srcset dell'embed (preferendo la risoluzione più alta, es. 1080w)
-        const srcsetMatches = [...html.matchAll(/srcset="([^"]+)"/g)];
-        for (const sm of srcsetMatches) {
-          const entries = sm[1].split(",").map((s) => s.trim());
-          const parsed = entries
-            .map((entry) => {
-              const parts = entry.split(/\s+/);
-              const url = decodificaStringa(parts[0]);
-              const width = parts[1] ? parseInt(parts[1].replace(/\D/g, ""), 10) : 0;
-              return { url, width };
-            })
-            .filter((p) => p.url.startsWith("http"));
+        // Estrae le immagini non ritagliate da <img class="EmbeddedMediaImage" ... srcset="...">
+        const trovata = estraiImmaginiDaHtmlEmbed(html, candidati, `embed:${code}`);
+        analizzaPayloadJsonInstagram(html, candidati, `embed_json:${code}`);
 
-          parsed.sort((a, b) => b.width - a.width);
-          for (const item of parsed) {
-            candidati.push(item.url);
-          }
-        }
-
-        // 1c. Immagine principale EmbeddedMediaImage
-        const imgTagMatch = /<img[^>]*class="[^"]*EmbeddedMediaImage[^"]*"[^>]*src="([^"]+)"/i.exec(
-          html,
-        );
-        if (imgTagMatch) {
-          candidati.push(decodificaStringa(imgTagMatch[1]));
+        // Se abbiamo trovato le immagini ad alta risoluzione non croppate nell'embed, possiamo interrompere il ciclo varianti
+        if (trovata) {
+          break;
         }
       }
     } catch (err) {
-      console.warn("[Instagram Embed] Tentativo fallito:", err);
+      console.warn(`[Instagram Embed ${code}] Tentativo non riuscito:`, err);
     }
   }
 
-  // 2. TENTATIVO VIA OPENGRAPH (con User-Agent facebookexternalhit)
+  // 2. TENTATIVO VIA API PUBBLICA INSTAGRAM WEB APP (/api/v1/media/${mediaId}/info/)
+  for (const code of variantiShortcode) {
+    try {
+      const mediaId = shortcodeToMediaId(code);
+      if (mediaId && mediaId !== "0") {
+        const apiUrl = `https://www.instagram.com/api/v1/media/${mediaId}/info/`;
+        const resp = await fetch(apiUrl, {
+          headers: {
+            ...browserHeaders,
+            "X-IG-App-ID": "936619743392459",
+            Accept: "*/*",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "X-Requested-With": "XMLHttpRequest",
+            Referer: `https://www.instagram.com/p/${code}/`,
+          },
+          signal: AbortSignal.timeout(8_000),
+        });
+
+        if (resp.ok) {
+          const dati = (await resp.json()) as {
+            items?: Array<{
+              carousel_media?: Array<{
+                image_versions2?: {
+                  candidates?: Array<{
+                    url: string;
+                    width: number;
+                    height: number;
+                  }>;
+                };
+              }>;
+              image_versions2?: {
+                candidates?: Array<{
+                  url: string;
+                  width: number;
+                  height: number;
+                }>;
+              };
+            }>;
+          };
+          const item = dati?.items?.[0];
+          if (item) {
+            const mediaSelezionato = item.carousel_media?.[0] ?? item;
+            const cands = mediaSelezionato.image_versions2?.candidates ?? [];
+            for (const c of cands) {
+              if (c?.url) {
+                aggiungiCandidato(
+                  candidati,
+                  c.url,
+                  1800,
+                  "api:image_versions2",
+                  c.width,
+                  c.height,
+                );
+              }
+            }
+            if (candidati.length > 0) break;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[Instagram API ${code}] Tentativo non riuscito:`, err);
+    }
+  }
+
+  // 3. TENTATIVO VIA OPENGRAPH (con User-Agent facebookexternalhit)
   try {
-    const cleanUrl = shortcode
-      ? `https://www.instagram.com/p/${shortcode}/`
+    const canonicalCode = variantiShortcode[0] ?? shortcodeIniziale;
+    const cleanUrl = canonicalCode
+      ? `https://www.instagram.com/p/${canonicalCode}/`
       : postUrl.split("?")[0];
 
     const resp = await fetch(cleanUrl, {
@@ -138,20 +517,17 @@ async function estraiImmagineDaInstagram(postUrl: string): Promise<string[]> {
 
     if (resp.ok) {
       const html = await resp.text();
+      estraiImmaginiDaHtmlEmbed(html, candidati, "opengraph_html");
+      analizzaPayloadJsonInstagram(html, candidati, "opengraph_json");
 
       const ogMatches = [
         ...html.matchAll(
-          /<meta\s+(?:property|name)=["']og:image(?::secure_url)?["']\s+content=["']([^"']+)["']/gi,
+          /<meta\s+(?:property|name)=["'](?:og:image:secure_url|og:image)["']\s+content=["']([^"']+)["']/gi,
         ),
       ];
       for (const m of ogMatches) {
-        candidati.push(decodificaStringa(m[1]));
-      }
-
-      const dUrls = [...html.matchAll(/"display_url"\s*:\s*"([^"]+)"/g)];
-      for (const m of dUrls) {
-        const dec = decodificaStringa(m[1]);
-        if (dec.startsWith("http")) candidati.push(dec);
+        // og:image di Instagram è tipicamente ritagliato a 1:1, quindi tenuto a priorità bassa
+        aggiungiCandidato(candidati, m[1], 50, "instagram:og:image");
       }
     }
   } catch (err) {
@@ -162,10 +538,13 @@ async function estraiImmagineDaInstagram(postUrl: string): Promise<string[]> {
 }
 
 /**
- * Estrae l'URL della locandina o foto principale da un post Facebook.
+ * Estrae l'URL della locandina o foto principale da un post Facebook
+ * preservando la versione a piena risoluzione non ritagliata.
  */
-async function estraiImmagineDaFacebook(postUrl: string): Promise<string[]> {
-  const candidati: string[] = [];
+async function estraiImmagineDaFacebook(
+  postUrl: string,
+): Promise<CandidatoFoto[]> {
+  const candidati: CandidatoFoto[] = [];
 
   const fbHeaders = {
     "User-Agent":
@@ -185,6 +564,31 @@ async function estraiImmagineDaFacebook(postUrl: string): Promise<string[]> {
     if (resp.ok) {
       const html = await resp.text();
 
+      // Cerca chiavi JSON per immagini originali/complete
+      const jsonImagePatterns = [
+        /(?:\\?"|&quot;)(?:full_image|original_image|photo_image)(?:\\?"|&quot;)\s*:\s*\{[\s\S]*?(?:\\?"|&quot;)(?:uri|url)(?:\\?"|&quot;)\s*:\s*(?:\\?"|&quot;)(https:[^"'\\]+)/gi,
+        /(?:\\?"|&quot;)image(?:\\?"|&quot;)\s*:\s*\{[\s\S]*?(?:\\?"|&quot;)uri(?:\\?"|&quot;)\s*:\s*(?:\\?"|&quot;)(https:[^"'\\]+)/gi,
+      ];
+
+      for (const pat of jsonImagePatterns) {
+        for (const m of html.matchAll(pat)) {
+          aggiungiCandidato(candidati, m[1], 1500, "facebook:json_image");
+        }
+      }
+
+      // Pattern CDN scontent di Facebook nel testo HTML
+      const scontentMatches = [
+        ...html.matchAll(
+          /https:\\\/\\\/[a-zA-Z0-9.\-_]*scontent[^"'\s<>]+\.(?:jpe?g|png|webp)[^"'\s<>]*/g,
+        ),
+        ...html.matchAll(
+          /https:\/\/[a-zA-Z0-9.\-_]*scontent[^"'\s<>]+\.(?:jpe?g|png|webp)[^"'\s<>]*/g,
+        ),
+      ];
+      for (const m of scontentMatches) {
+        aggiungiCandidato(candidati, m[0], 1200, "facebook:scontent_raw");
+      }
+
       // OpenGraph secure_url e og:image
       const ogMatches = [
         ...html.matchAll(
@@ -192,23 +596,14 @@ async function estraiImmagineDaFacebook(postUrl: string): Promise<string[]> {
         ),
       ];
       for (const m of ogMatches) {
-        candidati.push(decodificaStringa(m[1]));
+        aggiungiCandidato(candidati, m[1], 200, "facebook:og:image");
       }
 
       // Link rel="image_src"
-      const linkImg = /<link\s+rel=["']image_src["']\s+href=["']([^"']+)["']/i.exec(
-        html,
-      );
+      const linkImg =
+        /<link\s+rel=["']image_src["']\s+href=["']([^"']+)["']/i.exec(html);
       if (linkImg) {
-        candidati.push(decodificaStringa(linkImg[1]));
-      }
-
-      // Pattern CDN scontent di Facebook nel testo HTML
-      const scontentMatches = [
-        ...html.matchAll(/https:\/\/[a-zA-Z0-9.\-_]*scontent[^"'\s<>]+/g),
-      ];
-      for (const m of scontentMatches.slice(0, 5)) {
-        candidati.push(decodificaStringa(m[0]));
+        aggiungiCandidato(candidati, linkImg[1], 180, "facebook:image_src");
       }
     }
   } catch (err) {
@@ -219,16 +614,18 @@ async function estraiImmagineDaFacebook(postUrl: string): Promise<string[]> {
 }
 
 /**
- * Estrae l'URL della foto principale da qualsiasi pagina web generica (OpenGraph, Twitter card, ecc.).
+ * Estrae l'URL della foto principale da qualsiasi pagina web generica.
  */
-async function estraiImmagineDaPaginaGenerica(url: string): Promise<string[]> {
-  const candidati: string[] = [];
+async function estraiImmagineDaPaginaGenerica(
+  url: string,
+): Promise<CandidatoFoto[]> {
+  const candidati: CandidatoFoto[] = [];
 
   try {
     const resp = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       redirect: "follow",
@@ -237,7 +634,8 @@ async function estraiImmagineDaPaginaGenerica(url: string): Promise<string[]> {
 
     const contentType = resp.headers.get("content-type") || "";
     if (contentType.startsWith("image/")) {
-      return [url];
+      aggiungiCandidato(candidati, url, 1000, "generica:direct_image");
+      return candidati;
     }
 
     if (resp.ok) {
@@ -252,22 +650,31 @@ async function estraiImmagineDaPaginaGenerica(url: string): Promise<string[]> {
         const u = decodificaStringa(m[1]);
         if (u) {
           try {
-            candidati.push(new URL(u, url).href);
+            aggiungiCandidato(
+              candidati,
+              new URL(u, url).href,
+              400,
+              "generica:og_image",
+            );
           } catch {
-            candidati.push(u);
+            aggiungiCandidato(candidati, u, 400, "generica:og_image");
           }
         }
       }
 
-      const linkImg = /<link\s+rel=["']image_src["']\s+href=["']([^"']+)["']/i.exec(
-        html,
-      );
+      const linkImg =
+        /<link\s+rel=["']image_src["']\s+href=["']([^"']+)["']/i.exec(html);
       if (linkImg) {
         const u = decodificaStringa(linkImg[1]);
         try {
-          candidati.push(new URL(u, url).href);
+          aggiungiCandidato(
+            candidati,
+            new URL(u, url).href,
+            350,
+            "generica:image_src",
+          );
         } catch {
-          candidati.push(u);
+          aggiungiCandidato(candidati, u, 350, "generica:image_src");
         }
       }
     }
@@ -278,17 +685,60 @@ async function estraiImmagineDaPaginaGenerica(url: string): Promise<string[]> {
   return candidati;
 }
 
+interface DettagliImmagineScaricata {
+  buffer: Buffer;
+  mimeType: string;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  isPortrait: boolean;
+  isSquare: boolean;
+  hasCrop: boolean;
+  score: number;
+}
+
 /**
- * Scarica i byte dell'immagine e ne convalida/normalizza il formato tramite sharp.
+ * Calcola il punteggio di idoneità di una locandina:
+ * - Dà priorità assoluta alle immagini complete e non croppate
+ * - Premia fortemente il formato verticale (tipico delle locandine con data, programma, intestazione e piè di pagina)
+ * - Penalizza i ritagli quadrati 1:1 o immagini con parametri di crop CDN espliciti
  */
-async function scaricaEValidaImmagine(
+function calcolaPunteggioImmagine(
+  width: number,
+  height: number,
+  hasCrop: boolean,
+  isPortrait: boolean,
+  isSquare: boolean,
+): number {
+  let score = width * height;
+
+  if (isPortrait) {
+    // Locandina verticale (es. 4:5, 1080x1350 o 1572w): contiene l'intera locandina
+    score *= 3.0;
+  } else if (isSquare) {
+    // Ritaglio quadrato 1:1: taglia le locandine verticali
+    score *= 0.25;
+  }
+
+  if (hasCrop) {
+    // Presenza di crop directive (es. stp=c...a_)
+    score *= 0.1;
+  }
+
+  return score;
+}
+
+/**
+ * Scarica i byte grezzi di una risorsa immagine con timeout.
+ */
+async function scaricaBuffer(
   urlImmagine: string,
   referer?: string,
-): Promise<{ buffer: Buffer; mimeType: string }> {
+): Promise<Buffer> {
   const resp = await fetch(urlImmagine, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
       Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
       ...(referer ? { Referer: referer } : {}),
     },
@@ -304,37 +754,13 @@ async function scaricaEValidaImmagine(
     throw new Error("L'immagine scaricata è troppo piccola o vuota.");
   }
 
-  const bufferIniziale = Buffer.from(rawBytes);
-  const image = sharp(bufferIniziale);
-  const metadata = await image.metadata();
-
-  if (!metadata.width || !metadata.height) {
-    throw new Error("Il file scaricato non è un'immagine valida.");
-  }
-
-  // Verifica se il formato è tra quelli direttamente supportati dallo storage (jpeg, png, webp)
-  let mimeType = "image/jpeg";
-  let bufferFinale: Buffer = bufferIniziale;
-
-  if (metadata.format === "jpeg") {
-    mimeType = "image/jpeg";
-  } else if (metadata.format === "png") {
-    mimeType = "image/png";
-  } else if (metadata.format === "webp") {
-    mimeType = "image/webp";
-  } else {
-    // Per formati come avif, heic, gif o altri, convertiamo in WebP ad alta qualità
-    const bufferWebp = await image.webp({ quality: 90 }).toBuffer();
-    bufferFinale = Buffer.from(bufferWebp);
-    mimeType = "image/webp";
-  }
-
-  return { buffer: bufferFinale, mimeType };
+  return Buffer.from(rawBytes);
 }
 
 /**
  * Funzione principale: dato l'URL di un post social (Facebook, Instagram o qualsiasi link),
- * estrae la foto/locandina originale non tagliata e restituisce il buffer pronto per lo storage.
+ * individua ed estrae la foto/locandina completa e originale (non ritagliata)
+ * e restituisce il buffer pronto per lo storage.
  */
 export async function estraiImmagineDaLinkSocial(
   urlPost: string,
@@ -356,9 +782,26 @@ export async function estraiImmagineDaLinkSocial(
   );
   if (isDirectImage) {
     try {
-      return await scaricaEValidaImmagine(urlPulito);
+      const raw = await scaricaBuffer(urlPulito);
+      const meta = await sharp(raw).metadata();
+      if (meta.width && meta.height) {
+        let mimeType = "image/jpeg";
+        let bufferFinale = raw;
+        if (meta.format === "jpeg") {
+          mimeType = "image/jpeg";
+        } else if (meta.format === "png") {
+          mimeType = "image/png";
+        } else if (meta.format === "webp") {
+          mimeType = "image/webp";
+        } else {
+          const bufferWebp = await sharp(raw).webp({ quality: 90 }).toBuffer();
+          bufferFinale = Buffer.from(bufferWebp);
+          mimeType = "image/webp";
+        }
+        return { buffer: bufferFinale, mimeType };
+      }
     } catch {
-      // Procediamo con gli altri tentativi se il download diretto fallisce
+      // Procediamo con gli altri estrattori se il download diretto fallisce
     }
   }
 
@@ -369,7 +812,7 @@ export async function estraiImmagineDaLinkSocial(
     urlPulito.includes("fb.watch") ||
     urlPulito.includes("fb.com");
 
-  let candidati: string[] = [];
+  let candidati: CandidatoFoto[] = [];
 
   if (isInstagram) {
     candidati = await estraiImmagineDaInstagram(urlPulito);
@@ -379,45 +822,125 @@ export async function estraiImmagineDaLinkSocial(
     candidati = await estraiImmagineDaPaginaGenerica(urlPulito);
   }
 
-  // Se nessun candidato trovato, tenta come fallback generico
+  // Fallback generico se nessun candidato è stato individuato
   if (candidati.length === 0) {
     candidati = await estraiImmagineDaPaginaGenerica(urlPulito);
   }
 
-  // Se ancora vuoto, tenta direttamente l'URL stesso come immagine
   if (candidati.length === 0) {
-    candidati = [urlPulito];
+    aggiungiCandidato(candidati, urlPulito, 100, "url_stesso");
   }
 
-  // Ordiniamo e de-croppiamo i candidati per dare priorità a quelli a piena risoluzione
-  const candidatiOrdinati: string[] = [];
-  const visti = new Set<string>();
-
+  // Ordina i candidati per priorità decrescente e deduplica per URL
+  const mappaUrl = new Map<string, CandidatoFoto>();
   for (const c of candidati) {
-    if (!c || visti.has(c)) continue;
-    visti.add(c);
-
-    // Se l'URL contiene parametri di crop Meta, proviamo prima la versione de-croppata
-    const decroppato = rimuoviCropMetaCdn(c);
-    if (decroppato !== c && !visti.has(decroppato)) {
-      candidatiOrdinati.push(decroppato);
-      visti.add(decroppato);
+    const normalizzato = c.url.trim();
+    if (!normalizzato) continue;
+    const esistente = mappaUrl.get(normalizzato);
+    if (!esistente || esistente.priorita < c.priorita) {
+      mappaUrl.set(normalizzato, c);
     }
-    candidatiOrdinati.push(c);
   }
+  const candidatiOrdinati = [...mappaUrl.values()].sort(
+    (a, b) => b.priorita - a.priorita,
+  );
 
+  let migliorRisultato: DettagliImmagineScaricata | null = null;
   let ultimoErrore: Error | null = null;
+  let tentativiValidi = 0;
+  const MAX_TENTATIVI_VALIDI = 6;
 
-  for (const candUrl of candidatiOrdinati) {
+  for (const cand of candidatiOrdinati) {
     try {
-      const risultato = await scaricaEValidaImmagine(candUrl, urlPulito);
-      return risultato;
+      const raw = await scaricaBuffer(cand.url, urlPulito);
+      const image = sharp(raw);
+      const metadata = await image.metadata();
+
+      if (!metadata.width || !metadata.height) continue;
+      if (metadata.width < 150 || metadata.height < 150) continue;
+
+      tentativiValidi++;
+
+      const width = metadata.width;
+      const height = metadata.height;
+      const aspectRatio = width / height;
+      const isPortrait = height > width * 1.05;
+      const isSquare =
+        Math.abs(width - height) <= 4 ||
+        (aspectRatio >= 0.97 && aspectRatio <= 1.03);
+      const hasCrop = haParametriCrop(cand.url);
+
+      // Normalizzazione formato per lo storage
+      let mimeType = "image/jpeg";
+      let bufferFinale = raw;
+      if (metadata.format === "jpeg") {
+        mimeType = "image/jpeg";
+      } else if (metadata.format === "png") {
+        mimeType = "image/png";
+      } else if (metadata.format === "webp") {
+        mimeType = "image/webp";
+      } else {
+        const bufferWebp = await image.webp({ quality: 90 }).toBuffer();
+        bufferFinale = Buffer.from(bufferWebp);
+        mimeType = "image/webp";
+      }
+
+      const score = calcolaPunteggioImmagine(
+        width,
+        height,
+        hasCrop,
+        isPortrait,
+        isSquare,
+      );
+
+      const dettaglio: DettagliImmagineScaricata = {
+        buffer: bufferFinale,
+        mimeType,
+        width,
+        height,
+        aspectRatio,
+        isPortrait,
+        isSquare,
+        hasCrop,
+        score,
+      };
+
+      // VITTORIA IMMEDIATA: se troviamo una locandina verticale ad alta risoluzione senza crop
+      if (!hasCrop && isPortrait && width >= 600 && height >= 750) {
+        return { buffer: dettaglio.buffer, mimeType: dettaglio.mimeType };
+      }
+
+      // Se troviamo un banner/immagine orizzontale full-resolution senza crop
+      if (!hasCrop && !isSquare && (width >= 1000 || height >= 1000)) {
+        return { buffer: dettaglio.buffer, mimeType: dettaglio.mimeType };
+      }
+
+      if (!migliorRisultato || score > migliorRisultato.score) {
+        migliorRisultato = dettaglio;
+      }
+
+      // Se abbiamo già trovato una candidata eccellente non croppata, non serve testare all'infinito
+      if (
+        tentativiValidi >= MAX_TENTATIVI_VALIDI &&
+        migliorRisultato &&
+        !migliorRisultato.hasCrop &&
+        !migliorRisultato.isSquare
+      ) {
+        break;
+      }
     } catch (err) {
       ultimoErrore = err instanceof Error ? err : new Error(String(err));
     }
   }
 
+  if (migliorRisultato) {
+    return {
+      buffer: migliorRisultato.buffer,
+      mimeType: migliorRisultato.mimeType,
+    };
+  }
+
   throw new Error(
-    `Impossibile recuperare l'immagine dal post social (${ultimoErrore?.message ?? "Nessuna immagine valida trovata"}). Verifica che il post sia pubblico e contenga una foto.`,
+    `Impossibile recuperare l'immagine completa dal post social (${ultimoErrore?.message ?? "Nessuna immagine valida trovata"}). Verifica che il post sia pubblico e contenga una foto.`,
   );
 }
