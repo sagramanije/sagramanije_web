@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   CalendarPlus,
   ClipboardCheck,
+  Image as ImageIcon,
   LockKeyhole,
   LogOut,
   Plus,
@@ -84,7 +85,7 @@ export default async function GestioneSagrePage() {
           </form>
         </header>
 
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
+        <div className="mt-7 grid gap-4 sm:grid-cols-3">
           <Link
             href="/gestione-sagre/programma"
             className="flex items-center gap-3 rounded-3xl bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 sm:p-6"
@@ -96,6 +97,21 @@ export default async function GestioneSagrePage() {
               <p className="font-title text-lg">Inserisci programma</p>
               <p className="mt-0.5 text-sm text-muted">
                 Aggiungi a mano le attività di una sagra.
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/gestione-sagre/immagine"
+            className="flex items-center gap-3 rounded-3xl bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 sm:p-6"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ImageIcon aria-hidden size={22} />
+            </span>
+            <div>
+              <p className="font-title text-lg">Modifica immagine</p>
+              <p className="mt-0.5 text-sm text-muted">
+                Cerca una sagra e aggiorna la locandina.
               </p>
             </div>
           </Link>
