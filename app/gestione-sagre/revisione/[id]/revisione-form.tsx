@@ -16,6 +16,7 @@ import {
   salvaLocandinaDaSocial,
   type StatoAzione,
 } from "../actions";
+import MappaVerificaLuogo from "./mappa-verifica-luogo";
 
 const STATO_INIZIALE: StatoAzione = { esito: "idle", messaggio: "" };
 const INPUT =
@@ -85,9 +86,28 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
   const categoria = CATEGORIE.includes(bozza.category ?? "")
     ? (bozza.category as string)
     : "sagra";
-  const provincia = PROVINCE.includes(bozza.provincia ?? "")
-    ? (bozza.provincia as string)
-    : "";
+  const [citta, setCitta] = useState(bozza.citta ?? "");
+  const [provinciaSelezionata, setProvinciaSelezionata] = useState(
+    PROVINCE.includes(bozza.provincia ?? "") ? (bozza.provincia as string) : "",
+  );
+  const [lat, setLat] = useState(bozza.lat ?? "");
+  const [leng, setLeng] = useState(bozza.leng ?? "");
+
+  function gestisciCambioLat(valore: string) {
+    if (valore.includes(",")) {
+      const parti = valore.split(",").map((p) => p.trim());
+      if (
+        parti.length === 2 &&
+        !isNaN(Number(parti[0])) &&
+        !isNaN(Number(parti[1]))
+      ) {
+        setLat(parti[0]);
+        setLeng(parti[1]);
+        return;
+      }
+    }
+    setLat(valore);
+  }
 
   return (
     <form action={azione} className="space-y-7">
@@ -194,7 +214,8 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
               name="citta"
               maxLength={150}
               required
-              defaultValue={bozza.citta}
+              value={citta}
+              onChange={(e) => setCitta(e.target.value)}
               className={INPUT}
             />
           </div>
@@ -205,7 +226,8 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
             <select
               id="provincia"
               name="provincia"
-              defaultValue={provincia}
+              value={provinciaSelezionata}
+              onChange={(e) => setProvinciaSelezionata(e.target.value)}
               className={INPUT}
             >
               <option value="">Seleziona</option>
@@ -230,7 +252,8 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
               step="any"
               min="-90"
               max="90"
-              defaultValue={bozza.lat ?? ""}
+              value={lat}
+              onChange={(e) => gestisciCambioLat(e.target.value)}
               placeholder="42.3500"
               className={INPUT}
             />
@@ -247,12 +270,25 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
               step="any"
               min="-180"
               max="180"
-              defaultValue={bozza.leng ?? ""}
+              value={leng}
+              onChange={(e) => setLeng(e.target.value)}
               placeholder="13.4000"
               className={INPUT}
             />
           </div>
         </div>
+
+        <MappaVerificaLuogo
+          citta={citta}
+          provincia={provinciaSelezionata}
+          lat={lat}
+          leng={leng}
+          onInvertiCoordinate={() => {
+            const temp = lat;
+            setLat(leng);
+            setLeng(temp);
+          }}
+        />
       </fieldset>
 
       <fieldset className="space-y-5 border-t border-beige pt-7">

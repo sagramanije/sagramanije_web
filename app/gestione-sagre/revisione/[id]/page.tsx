@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Compass, MapPin } from "lucide-react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -61,6 +61,23 @@ export default async function RevisioneSagraPage({ params }: Props) {
             Bozza #{bozza.id} da sagre_pre_prod. Controlla e correggi i dati,
             poi convalida per trasferirli nella tabella sagre.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-beige/70 px-3 py-1 text-ink">
+              <MapPin size={13} className="text-primary" aria-hidden />
+              {bozza.citta || "Comune non indicato"}
+              {bozza.provincia ? ` (${bozza.provincia})` : ""}
+            </span>
+            {bozza.lat && bozza.leng ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-beige/40 px-3 py-1 text-ink">
+                <Compass size={13} className="text-muted" aria-hidden />
+                Coordinate rilevate: {bozza.lat}, {bozza.leng}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-beige/30 px-3 py-1 text-warm">
+                Coordinate non rilevate nella bozza
+              </span>
+            )}
+          </div>
         </header>
 
         {bozza.verifica_data_esito || bozza.verifica_data_fonte ? (
