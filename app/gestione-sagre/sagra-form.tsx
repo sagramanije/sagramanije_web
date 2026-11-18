@@ -174,6 +174,7 @@ export default function SagraForm() {
             >
               <option value="Sagra">Sagra</option>
               <option value="Evento">Evento</option>
+              <option value="Mercatini">Mercatini</option>
               <option value="Altro">Altro</option>
             </select>
           </div>

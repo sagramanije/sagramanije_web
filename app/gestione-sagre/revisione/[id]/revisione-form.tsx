@@ -22,7 +22,7 @@ const STATO_INIZIALE: StatoAzione = { esito: "idle", messaggio: "" };
 const INPUT =
   "mt-2 min-h-12 w-full rounded-2xl border border-beige bg-white px-4 py-3 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
 const LABEL = "text-sm font-bold";
-const CATEGORIE = ["sagra", "Evento", "Altro"];
+const CATEGORIE = ["sagra", "Evento", "Mercatini", "Altro"];
 const PROVINCE = ["AQ", "CH", "PE", "TE"];
 
 export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
@@ -83,9 +83,10 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
     }
   }
 
-  const categoria = CATEGORIE.includes(bozza.category ?? "")
-    ? (bozza.category as string)
-    : "sagra";
+  const categoriaMatch = CATEGORIE.find(
+    (c) => c.toLowerCase() === (bozza.category ?? "").toLowerCase(),
+  );
+  const categoria = categoriaMatch ?? "sagra";
   const [citta, setCitta] = useState(bozza.citta ?? "");
   const [provinciaSelezionata, setProvinciaSelezionata] = useState(
     PROVINCE.includes(bozza.provincia ?? "") ? (bozza.provincia as string) : "",
@@ -195,6 +196,7 @@ export default function RevisioneForm({ bozza }: { bozza: SagraPreProd }) {
             >
               <option value="sagra">Sagra</option>
               <option value="Evento">Evento</option>
+              <option value="Mercatini">Mercatini</option>
               <option value="Altro">Altro</option>
             </select>
           </div>

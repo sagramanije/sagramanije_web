@@ -319,12 +319,27 @@ export function toISO(d: Date): string {
  */
 export function riassunto(s: Sagra): string {
   const luogo = s.citta ? `a ${s.citta}${s.provincia ? ` (${s.provincia})` : ""}` : "in Abruzzo";
-  const sagra = s.category?.toLowerCase() === "sagra";
-  const tipo = sagra ? "La sagra" : "L'evento";
+  const cat = s.category?.toLowerCase();
+  const sagra = cat === "sagra";
+  const mercatini = cat === "mercatini";
+  let tipo = "L'evento";
+  let passato = eConclusa(s) ? " si è tenuto" : " si tiene";
+
+  if (sagra) {
+    tipo = "La sagra";
+    passato = eConclusa(s) ? " si è tenuta" : " si tiene";
+  } else if (mercatini) {
+    tipo = "I mercatini";
+    passato = eConclusa(s) ? " si sono tenuti" : " si tengono";
+  }
+
   // Al passato quando è già finita, o lo snippet su Google promette una sagra
   // che non c'è più.
-  const passato = eConclusa(s) ? (sagra ? " si è tenuta" : " si è tenuto") : " si tiene";
-  const quando = s.data_inizio ? `${passato} ${formatIntervallo(s)}` : " è in programma";
+  const quando = s.data_inizio
+    ? `${passato} ${formatIntervallo(s)}`
+    : mercatini
+      ? " sono in programma"
+      : " è in programma";
   const orario = s.ora_inizio ? `, a partire dalle ${s.ora_inizio}` : "";
   return `${tipo} "${s.nome_sagra}"${quando} ${luogo}${orario}.`;
 }

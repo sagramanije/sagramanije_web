@@ -184,8 +184,12 @@ export default async function SagraPage({ params }: Props) {
               <div className="rounded-3xl bg-beige p-6">
                 <p className="font-title text-lg">Questa edizione è conclusa</p>
                 <p className="mt-2 text-muted">
-                  La sagra si è svolta {formatIntervallo(sagra)}. Di solito torna
-                  ogni anno: intanto guarda{" "}
+                  {sagra.category?.toLowerCase() === "mercatini"
+                    ? `I mercatini si sono svolti ${formatIntervallo(sagra)}.`
+                    : sagra.category?.toLowerCase() === "evento"
+                      ? `L'evento si è svolto ${formatIntervallo(sagra)}.`
+                      : `La sagra si è svolta ${formatIntervallo(sagra)}.`}{" "}
+                  Di solito torna ogni anno: intanto guarda{" "}
                   <Link
                     href="/sagre/abruzzo"
                     className="font-bold text-primary-ink hover:underline"

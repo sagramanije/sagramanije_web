@@ -158,6 +158,7 @@ export async function salvaSagra(
     const categoria = {
       sagra: "Sagra",
       evento: "Evento",
+      mercatini: "Mercatini",
       altro: "Altro",
     }[categoriaRicevuta.toLowerCase()];
     if (!categoria) {
