@@ -16,3 +16,5 @@ export const OG_DEFAULTS = {
   locale: "it_IT",
   type: "website",
 } as const;
+
+export const MERCATINI_PATH = "/mercatini-di-natale/abruzzo";

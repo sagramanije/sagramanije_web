@@ -40,3 +40,70 @@ body {
     scroll-behavior: auto;
   }
 }
+
+:root {
+  --color-ink: #292619;
+  --color-muted: #645e55;
+  --color-primary: #bb472b;
+  --color-primary-ink: #984122;
+  --color-cream: #fff8ee;
+  --color-beige: #e9dcca;
+}
+:root[data-tema="natale"] {
+  --color-cream: #faf7ef;
+  --color-ink: #153e33;
+  --color-primary: #9e3536;
+  --color-primary-ink: #913335;
+  --color-muted: #53645a;
+  --color-warm: #546457;
+  --color-beige: #dedfce;
+}
+:focus-visible { outline: 3px solid var(--color-primary-ink); outline-offset: 3px; }
+.copertina {
+  display: grid;
+  align-items: center;
+  gap: 2.2rem;
+  padding-block: clamp(2.3rem, 5vw, 4.6rem);
+}
+.copertina-testo { display: grid; justify-items: start; gap: 1.35rem; }
+.titolo-copertina {
+  font-family: var(--font-title), system-ui, sans-serif;
+  font-size: clamp(3.4rem, 7vw, 5.9rem);
+  letter-spacing: -.066em;
+  font-weight: 740;
+  line-height: .93;
+}
+.titolo-copertina em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  color: var(--color-primary-ink);
+}
+.pulsante-guida {
+  display: inline-flex; gap: 1rem; align-items: center;
+  background: var(--color-ink); color: var(--color-cream);
+  padding: .9rem 1.4rem; border-radius: 99rem; font-weight: 700;
+}
+.pulsante-guida:hover { background: var(--color-primary-ink); }
+.cartolina {
+  min-width: 0; background: #fffdf4; padding: .55rem;
+  border: 1px solid var(--color-beige);
+  box-shadow: 0 9px 22px -12px #2a341f60;
+  transform: rotate(1.4deg);
+}
+.cartolina img { width: 100%; aspect-ratio: 1.49; object-fit: cover; }
+.cartolina figcaption {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .7rem .3rem .2rem; color: var(--color-muted);
+  font: italic .96rem Georgia, serif;
+}
+.cartolina figcaption span { display: flex; align-items: center; gap: .35rem; }
+.percorsi { display: grid; border-block: 1px solid var(--color-beige); }
+.percorsi > a + a { border-top: 1px solid var(--color-beige); }
+.icona-percorso { background: var(--color-surface); padding: .7rem; border: 1px solid var(--color-beige); border-radius: 50%; }
+@media (min-width: 48rem) {
+  .copertina { grid-template-columns: .88fr 1.12fr; gap: 2.8rem; }
+  .percorsi { grid-template-columns: repeat(3, 1fr); padding-block: .8rem; }
+  .percorsi > a { padding: .5rem 1.25rem; }
+  .percorsi > a:first-child { padding-left: 0; }
+  .percorsi > a + a { border-top: 0; border-left: 1px solid var(--color-beige); }
+}

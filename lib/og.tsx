@@ -17,15 +17,18 @@ type Props = {
   titolo: string;
   /** Riga di dettaglio sotto il titolo (date, numero di sagre…). */
   sottotitolo?: string;
+  natale?: boolean;
 };
 
 /**
  * Card social del sito. Satori supporta solo flexbox e un sottoinsieme di CSS
  * (niente grid), e ogni contenitore con più figli vuole un display esplicito.
  */
-export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
+export function ogCard({ occhiello, titolo, sottotitolo, natale = false }: Props) {
   // I titoli lunghi (nomi di sagre chilometrici) devono rimpicciolirsi, o
   // sbordano dalla card: Satori non sa fare il fit automatico del testo.
+  const accento = natale ? "#ffd596" : ARANCIONE;
+  const inchiostro = natale ? "#fff9e9" : INCHIOSTRO;
   const corpo = titolo.length > 55 ? 62 : titolo.length > 34 ? 76 : 94;
 
   return new ImageResponse(
@@ -37,7 +40,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          backgroundColor: CREMA,
+          backgroundColor: natale ? "#153e33" : CREMA,
           padding: "72px 80px",
           fontFamily: "sans-serif",
         }}
@@ -51,7 +54,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
               fontWeight: 700,
               letterSpacing: 2,
               textTransform: "uppercase",
-              color: ARANCIONE,
+              color: accento,
             }}
           >
             {occhiello}
@@ -65,7 +68,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
               fontWeight: 800,
               lineHeight: 1.05,
               letterSpacing: -2,
-              color: INCHIOSTRO,
+              color: inchiostro,
             }}
           >
             {titolo}
@@ -77,7 +80,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
                 display: "flex",
                 marginTop: 24,
                 fontSize: 34,
-                color: SPENTO,
+                color: natale ? "#e4e4cf" : SPENTO,
               }}
             >
               {sottotitolo}
@@ -92,7 +95,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
               width: 64,
               height: 8,
               borderRadius: 4,
-              backgroundColor: ARANCIONE,
+              backgroundColor: accento,
             }}
           />
           <div
@@ -101,7 +104,7 @@ export function ogCard({ occhiello, titolo, sottotitolo }: Props) {
               marginLeft: 20,
               fontSize: 30,
               fontWeight: 700,
-              color: INCHIOSTRO,
+              color: inchiostro,
             }}
           >
             sagramanije.it

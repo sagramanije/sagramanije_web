@@ -2,7 +2,7 @@ import { Calendar, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Sagra } from "../../lib/sagre";
-import { formatIntervallo, locandinaProxyUrl } from "../../lib/sagre";
+import { eMercatino, formatIntervallo, locandinaProxyUrl } from "../../lib/sagre";
 import StripedPlaceholder from "./striped-placeholder";
 
 // Card di una sagra vera (dall'API), nello stesso stile delle card mockup.
@@ -12,9 +12,9 @@ export default function EventCard({ sagra }: { sagra: Sagra }) {
   return (
     <Link
       href={`/sagra/${sagra.slug}`}
-      className="block overflow-hidden rounded-3xl bg-surface transition-transform hover:-translate-y-1"
+      className="block overflow-hidden rounded-2xl border border-beige bg-surface shadow-sm transition-transform hover:-translate-y-1"
     >
-      <div className="relative h-28">
+      <div className="relative h-36">
         <StripedPlaceholder />
         {locandina ? (
           // La versione invalida la cache se l'origine assegna una nuova immagine.
@@ -28,7 +28,7 @@ export default function EventCard({ sagra }: { sagra: Sagra }) {
         ) : null}
         <div className="relative flex items-start justify-between p-4">
           <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-white">
-            {sagra.category?.toLowerCase() ?? "sagra"}
+            {eMercatino(sagra) ? "Mercatino" : sagra.category?.toLowerCase() ?? "sagra"}
           </span>
         </div>
       </div>

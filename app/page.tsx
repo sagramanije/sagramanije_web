@@ -1,6 +1,8 @@
 import { ChevronRight, Info, MapPin, PlusCircle, Star } from "lucide-react";
 import type { Metadata } from "next";
 import { OG_DEFAULTS, SITE_URL } from "../lib/site";
+import Copertina from "./components/copertina";
+import { temaNatalizio } from "../lib/modalita-natale";
 import FeatureCard from "./components/feature-card";
 import MockDetail from "./components/mock-detail";
 import MockList from "./components/mock-list";
@@ -18,12 +20,18 @@ import SezioneRoulette from "./components/sezione-roulette";
 // La sezione "prossime sagre" legge l'API: rigenera la home ogni 6 ore.
 export const revalidate = 21_600;
 
-// Il titolo lo eredita da title.default nel layout: la home è l'unica pagina
-// che non deve passare dal template.
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-  openGraph: { ...OG_DEFAULTS, url: "/" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const natale = await temaNatalizio();
+  const title = natale ? "Mercatini di Natale e sagre in Abruzzo" : "Sagre e feste di paese in Abruzzo";
+  const description = natale
+    ? "Scopri i mercatini di Natale e le sagre in Abruzzo. Consulta date, località e programmi per organizzare una visita nei borghi abruzzesi."
+    : "Trova le sagre e le feste di paese in Abruzzo. Sfoglia il calendario per mese e provincia o scopri gli appuntamenti di questo weekend.";
+  return {
+    title: { absolute: `${title} | Sagramanije` }, description,
+    alternates: { canonical: "/" },
+    openGraph: { ...OG_DEFAULTS, title, description, url: "/" },
+  };
+}
 
 const REPORT_MAILTO = `mailto:${EMAIL}?subject=${encodeURIComponent(
   "Segnalazione sagra",
@@ -38,11 +46,12 @@ const orgJsonLd = {
   email: EMAIL,
   logo: `${SITE_URL}/logo.png`,
   description:
-    "Il calendario delle sagre e delle feste di paese dell'Abruzzo, su mappa.",
+    "Il calendario di sagre, feste di paese e mercatini in Abruzzo.",
   areaServed: { "@type": "AdministrativeArea", name: "Abruzzo" },
 };
 
-export default function Home() {
+export default async function Home() {
+  const natale = await temaNatalizio();
   return (
     <>
       <script
@@ -53,33 +62,8 @@ export default function Home() {
       <SiteNav />
 
       <main id="top" className="flex-1">
-        {/* Hero */}
-        <section className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-[1.1fr_auto] lg:py-24">
-          <div>
-            <p className="flex items-center gap-2 font-semibold text-primary-ink">
-              <MapPin size={18} strokeWidth={2.5} />
-              Abruzzo
-            </p>
-            <h1 className="mt-3 font-title text-5xl leading-[1.05] tracking-tight sm:text-6xl">
-              Trova la tua sagra
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-              <strong className="font-bold text-ink">Sagramanije</strong>{" "}
-              nasce dalla voglia di riportare la gente nelle piazze. Raccogliamo le
-              sagre e le feste di paese dell&apos;Abruzzo e te le mettiamo su una
-              mappa: porchetta, vino, musica e tradizioni a due passi da casa.
-            </p>
-            <StoreBadges className="mt-8" />
-            <p className="mt-4 text-sm text-muted">
-              Gratis, senza account. Ti bastano la posizione e un po&apos; di
-              fame.
-            </p>
-          </div>
-
-          <PhoneFrame className="mx-auto lg:mx-0">
-            <MockList />
-          </PhoneFrame>
-        </section>
+        <Copertina natale={natale} />
+        <ProssimeSagre />
 
         {/* Come funziona */}
         <section id="come-funziona" className="mx-auto max-w-6xl px-6 py-16">
@@ -110,9 +94,6 @@ export default function Home() {
             />
           </div>
         </section>
-
-        {/* Prossime sagre (dati veri dall'API) */}
-        <ProssimeSagre />
 
         {/* Tocc' a 'ndà: La Roulette della Sagra */}
         <SezioneRoulette />

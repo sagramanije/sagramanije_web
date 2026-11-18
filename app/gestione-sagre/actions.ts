@@ -2,6 +2,8 @@
 
 import { randomBytes } from "node:crypto";
 import type { ResultSetHeader } from "mysql2";
+import { revalidatePath, updateTag } from "next/cache";
+import { salvaModalitaNatale, TAG_NATALE } from "../../lib/modalita-natale";
 import { redirect } from "next/navigation";
 import {
   configurazioneAdminCompleta,
@@ -329,4 +331,19 @@ Restituisci SOLO il JSON valido.`;
         : "Errore durante il caricamento o l'analisi.");
     return { esito: "errore", messaggio };
   }
+}
+
+export async function cambiaModalitaNatale(_precedente: string, dati: FormData): Promise<string> {
+  if (!(await sessioneAdminValida())) return "Sessione scaduta. Accedi di nuovo.";
+  const valore = dati.get("attiva");
+  if (valore !== "0" && valore !== "1") return "Impostazione non valida.";
+  try {
+    await salvaModalitaNatale(valore === "1");
+  } catch (errore) {
+    console.error("Salvataggio modalità Natale", errore);
+    return "Salvataggio non riuscito. Riprova.";
+  }
+  updateTag(TAG_NATALE);
+  revalidatePath("/", "layout");
+  return valore === "1" ? "Modalità Natale attivata." : "Modalità Natale disattivata.";
 }

@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
     // quando localPatterns è presente, Next blocca ogni percorso non elencato.
     localPatterns: [
       { pathname: "/locandina/**" },
+      { pathname: "/mercatini-abruzzo.webp", search: "" },
+      { pathname: "/sagra-abruzzo.webp", search: "" },
       { pathname: "/pin-mark.png", search: "" },
     ],
   },

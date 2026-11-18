@@ -6,7 +6,7 @@ import {
   mesiConSagre,
   PROVINCE,
 } from "../lib/sagre";
-import { SITE_URL } from "../lib/site";
+import { MERCATINI_PATH, SITE_URL } from "../lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Calendario e pagine mese cambiano davvero a ogni giro di ISR (aggiungiamo
@@ -16,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const aggiornato = new Date();
 
   const fisse: MetadataRoute.Sitemap = [
+    { url: SITE_URL + MERCATINI_PATH, changeFrequency: "weekly", priority: 0.8 },
     { url: SITE_URL, lastModified: aggiornato, changeFrequency: "weekly", priority: 1 },
     {
       url: `${SITE_URL}/supporto`,

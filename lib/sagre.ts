@@ -68,6 +68,7 @@ const SagraApi = z.object({
   locandina: z.url().nullable().catch(null),
   link_pagina_ufficiale: z.url().nullable().catch(null),
   category: testo,
+  tipo: testo.nullish(),
   ora_inizio: z.string().nullable().catch(null),
   // La descrizione estesa dell'evento. Manca sulle sagre archiviate prima che
   // il campo esistesse: lì la pagina ricade sul riassunto costruito dai dati.
@@ -86,6 +87,15 @@ const ArchivioFile = z.object({
 type SagraApiT = z.infer<typeof SagraApi>;
 
 export type Sagra = SagraApiT & { slug: string };
+
+// Stessa precedenza dell’app mobile. I record storici possono avere solo il titolo.
+export function eMercatino(s: Pick<Sagra, "tipo" | "category" | "nome_sagra">) {
+  const tipoMercatino = /^mercatin[oi](?: (?:di )?natale| nataliz(?:io|i))?$/i;
+  const tipo = s.tipo?.trim();
+  if (tipo) return tipoMercatino.test(tipo.replace(/[_-]+/g, " "));
+  return tipoMercatino.test(s.category.trim())
+    || /^(?:(?:il|i)\s+)?mercatin[oi]\s+(?:di\s+natale|nataliz(?:io|i)|dell[’']avvento)\b/i.test(s.nome_sagra.trim());
+}
 
 // --- fetch + normalizzazione ---
 
@@ -320,8 +330,8 @@ export function toISO(d: Date): string {
 export function riassunto(s: Sagra): string {
   const luogo = s.citta ? `a ${s.citta}${s.provincia ? ` (${s.provincia})` : ""}` : "in Abruzzo";
   const cat = s.category?.toLowerCase();
-  const sagra = cat === "sagra";
-  const mercatini = cat === "mercatini";
+  const mercatini = eMercatino(s);
+  const sagra = !mercatini && cat === "sagra";
   let tipo = "L'evento";
   let passato = eConclusa(s) ? " si è tenuto" : " si tiene";
 
@@ -463,14 +473,14 @@ export function eventJsonLd(s: Sagra, url: string) {
     // Solo dati reali: la locandina quando c'è ed è di fonte affidabile.
     ...(immagine && { image: [immagine] }),
     // Le sagre hanno ingresso libero: offerta gratuita, dato veritiero.
-    offers: {
+    ...(!eMercatino(s) && { offers: {
       "@type": "Offer",
       price: 0,
       priceCurrency: "EUR",
       availability: "https://schema.org/InStock",
       url,
       ...(s.data_inizio && { validFrom: toISO(s.data_inizio) }),
-    },
+    } }),
     // Nei dati strutturati va la descrizione per intero: è quella che descrive
     // davvero l'evento, il riassunto dai dati è solo il ripiego.
     description: paragrafi(s).join("\n\n") || riassunto(s),

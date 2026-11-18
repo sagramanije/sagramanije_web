@@ -12,6 +12,7 @@ import SagraBottomBar from "../../components/sagra-bottom-bar";
 import Image from "next/image";
 import {
   eConclusa,
+  eMercatino,
   eventJsonLd,
   formatIntervallo,
   getSagraBySlug,
@@ -24,7 +25,7 @@ import {
   toISO,
 } from "../../../lib/sagre";
 import { getProgrammaSagra } from "../../../lib/programma";
-import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
+import { MERCATINI_PATH, OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 
 export const revalidate = 21_600;
 
@@ -84,6 +85,7 @@ export default async function SagraPage({ params }: Props) {
   const programma = await getProgrammaSagra(sagra.id);
   
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
+  const mercatino = eMercatino(sagra);
   const conclusa = eConclusa(sagra);
   const locandina = locandinaProxyUrl(sagra, "detail");
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${sagra.lat},${sagra.leng}`;
@@ -161,7 +163,7 @@ export default async function SagraPage({ params }: Props) {
                 />
               ) : null}
               <span className="absolute left-5 top-5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-white shadow-xs">
-                {sagra.category?.toLowerCase() ?? "sagra"}
+                {mercatino ? "Mercatino" : sagra.category?.toLowerCase() ?? "sagra"}
               </span>
             </div>
 
@@ -184,17 +186,17 @@ export default async function SagraPage({ params }: Props) {
               <div className="rounded-3xl bg-beige p-6">
                 <p className="font-title text-lg">Questa edizione è conclusa</p>
                 <p className="mt-2 text-muted">
-                  {sagra.category?.toLowerCase() === "mercatini"
+                  {mercatino
                     ? `I mercatini si sono svolti ${formatIntervallo(sagra)}.`
                     : sagra.category?.toLowerCase() === "evento"
                       ? `L'evento si è svolto ${formatIntervallo(sagra)}.`
                       : `La sagra si è svolta ${formatIntervallo(sagra)}.`}{" "}
                   Di solito torna ogni anno: intanto guarda{" "}
                   <Link
-                    href="/sagre/abruzzo"
+                    href={mercatino ? MERCATINI_PATH : "/sagre/abruzzo"}
                     className="font-bold text-primary-ink hover:underline"
                   >
-                    le sagre in programma adesso
+                    {mercatino ? "il calendario dei mercatini" : "le sagre in programma adesso"}
                   </Link>
                   .
                 </p>

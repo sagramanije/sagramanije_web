@@ -13,6 +13,8 @@ import { sessioneAdminValida } from "../../lib/admin-auth";
 import { contaSagrePreProd } from "../../lib/sagre-pre-prod";
 import { Wordmark } from "../components/wordmark";
 import { esci } from "./actions";
+import ModalitaNatale from "./modalita-natale";
+import { leggiModalitaNatale } from "../../lib/modalita-natale";
 import LoginForm from "./login-form";
 import SagraForm from "./sagra-form";
 
@@ -51,7 +53,9 @@ export default async function GestioneSagrePage() {
     );
   }
 
-  const daRevisionare = await contaSagrePreProd();
+  const [daRevisionare, natale] = await Promise.all([
+    contaSagrePreProd(), leggiModalitaNatale().catch(() => null),
+  ]);
 
   return (
     <main className="min-h-svh px-4 py-6 sm:px-6 sm:py-10">
@@ -84,6 +88,8 @@ export default async function GestioneSagrePage() {
             </button>
           </form>
         </header>
+
+        <ModalitaNatale attiva={natale} />
 
         <div className="mt-7 grid gap-4 sm:grid-cols-3">
           <Link

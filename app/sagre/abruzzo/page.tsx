@@ -14,7 +14,7 @@ import {
   PROVINCE,
   sagreNelMese,
 } from "../../../lib/sagre";
-import { OG_DEFAULTS, SITE_URL } from "../../../lib/site";
+import { MERCATINI_PATH, OG_DEFAULTS, SITE_URL } from "../../../lib/site";
 import { EMAIL } from "@/app/data";
 
 export const revalidate = 21_600; // allineato a SAGRE_REVALIDATE in lib/sagre.ts
@@ -110,6 +110,9 @@ export default async function SagreAbruzzoPage() {
             className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-ink"
           >
             Questo weekend
+          </Link>
+          <Link href={MERCATINI_PATH} className="rounded-full border border-beige bg-surface px-4 py-2 text-sm font-bold hover:text-primary-ink">
+            Mercatini di Natale
           </Link>
           {PROVINCE.map((p) => (
             <Link
