@@ -107,3 +107,37 @@ body {
   .percorsi > a:first-child { padding-left: 0; }
   .percorsi > a + a { border-top: 0; border-left: 1px solid var(--color-beige); }
 }
+
+.agenda-campo {
+  display: grid;
+  min-width: 0;
+  gap: .4rem;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.agenda-campo input, .agenda-campo select {
+  width: 100%;
+  min-height: 2.8rem;
+  border: 1px solid var(--color-beige);
+  border-radius: .65rem;
+  background: var(--color-cream);
+  padding: .5rem .7rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.agenda-pill {
+  min-height: 2.75rem;
+  cursor: pointer;
+  border: 1px solid var(--color-beige);
+  border-radius: 99rem;
+  background: var(--color-surface);
+  padding: .55rem 1rem;
+  font-size: .875rem;
+  font-weight: 700;
+}
+.agenda-pill:hover { border-color: var(--color-ink); }
+.agenda-pill[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-cream);
+}

@@ -1,50 +1,23 @@
-import Link from "next/link";
-import { getSagreAbruzzo } from "../../lib/sagre";
-import EventCard from "./event-card";
+import { eConclusa, eMercatino, formatIntervallo, getSagreAbruzzo, PROVINCE, toISO, weekendCorrente } from "../../lib/sagre";
+import Agenda, { type Appuntamento } from "./agenda";
 
-// I prossimi appuntamenti vere, dall'API dell'app. Se l'API è giù la home
-// non deve rompersi: la sezione semplicemente non compare.
 export default async function ProssimeSagre() {
-  let prossime;
-  try {
-    const oggi = new Date();
-    oggi.setHours(0, 0, 0, 0);
-    prossime = (await getSagreAbruzzo())
-      .filter((s) => (s.data_fine ?? s.data_inizio ?? oggi) >= oggi)
-      .slice(0, 8);
-  } catch {
-    return null;
-  }
-  if (prossime.length === 0) return null;
-
-  return (
-    <section id="prossime-sagre" className="py-16">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-4">
-          <div>
-            <h2 className="font-title text-3xl sm:text-4xl">I prossimi appuntamenti</h2>
-            <p className="mt-3 max-w-xl text-muted">
-              Date e luoghi dei prossimi eventi nei paesi abruzzesi.
-            </p>
-          </div>
-          <Link
-            href="/sagre/abruzzo"
-            className="shrink-0 font-bold text-primary-ink hover:underline"
-          >
-            Tutte le sagre in Abruzzo →
-          </Link>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mt-10 flex snap-x gap-6 overflow-x-auto pb-4">
-          {prossime.map((s) => (
-            <div key={s.slug} className="w-72 shrink-0 snap-start">
-              <EventCard sagra={s} />
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  const giornoItaliano = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(new Date());
+  // Le date del catalogo sono giorni di calendario, memorizzati a mezzanotte locale.
+  const oggi = new Date(giornoItaliano + "T00:00:00");
+  const weekend = weekendCorrente(oggi);
+  const catalogo = await getSagreAbruzzo().catch(() => null);
+  const eventi: Appuntamento[] = (catalogo ?? []).filter(s => !eConclusa(s, oggi)).map(s => ({
+    slug: s.slug,
+    titolo: s.nome_sagra,
+    citta: s.citta,
+    provincia: s.provincia?.trim().toUpperCase() ?? "",
+    tipo: eMercatino(s) ? "Mercatino" : s.category.trim().toLowerCase() === "sagra" ? "Sagra" : "Evento",
+    date: formatIntervallo(s),
+    giorno: s.data_inizio?.getDate() ?? null,
+    mese: s.data_inizio?.toLocaleString("it-IT", { month: "short" }) ?? "",
+    oggi: !!s.data_inizio && s.data_inizio <= oggi,
+    weekend: !!s.data_inizio && s.data_inizio <= weekend.fine && (s.data_fine ?? s.data_inizio) >= weekend.inizio,
+  }));
+  return <Agenda key={toISO(oggi)} eventi={eventi} province={PROVINCE} disponibile={catalogo !== null} />;
 }

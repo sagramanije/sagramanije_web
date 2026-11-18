@@ -24,8 +24,8 @@ export default function Copertina({ natale }: { natale: boolean }) {
             {natale ? "Segui le luci dei borghi abruzzesi. Trova i mercatini di Natale, scegli una data e apri la mappa per arrivare in piazza."
               : "Dagli arrosticini sulla brace alla musica in piazza. Trova le sagre e le feste di paese in Abruzzo e scegli dove andare."}
           </p>
-          <Link href={natale ? MERCATINI_PATH : "/sagre/abruzzo"} className="pulsante-guida">
-            {natale ? "Scopri i mercatini" : "Esplora il calendario"} <ArrowRight size={18} aria-hidden />
+          <Link href="#prossime-sagre" className="pulsante-guida">
+            Trova un appuntamento <ArrowRight size={18} aria-hidden />
           </Link>
         </div>
         <figure className="cartolina">
