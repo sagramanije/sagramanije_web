@@ -90,7 +90,7 @@ export default async function SagreAbruzzoPage() {
           </Link>{" "}
           / Sagre in Abruzzo
         </p>
-        <h1 className="mt-3 font-title text-4xl leading-tight sm:text-5xl">
+        <h1 className="mt-3 font-title text-titolo-pagina leading-tight">
           Sagre in Abruzzo
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
@@ -161,7 +161,7 @@ export default async function SagreAbruzzoPage() {
           return (
             <section key={m.slug} className="mt-14">
               <div className="flex items-baseline justify-between gap-4">
-                <h2 className="font-title text-2xl sm:text-3xl">
+                <h2 className="font-title text-titolo-sezione">
                   {maiuscola(m.nome)} {m.anno}
                 </h2>
                 <Link

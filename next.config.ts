@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
+import { networkInterfaces } from "node:os";
 
 const nextConfig: NextConfig = {
+  // Permette al telefono sulla LAN di caricare gli asset del server di sviluppo.
+  allowedDevOrigins: Object.values(networkInterfaces()).flatMap(interfaccia =>
+    (interfaccia ?? []).filter(ip => !ip.internal && ip.family === "IPv4").map(ip => ip.address)),
   // Senza questo Turbopack risale a un package-lock.json fuori dal progetto.
   turbopack: {
     root: __dirname,

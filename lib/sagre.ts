@@ -599,7 +599,9 @@ export function formatIntervallo(s: Sagra): string {
   if (stessoMese) {
     return `dal ${s.data_inizio.getDate()} al ${s.data_fine.toLocaleDateString("it-IT", opts)}`;
   }
-  return `dal ${s.data_inizio.toLocaleDateString("it-IT", { day: "numeric", month: "long" })} al ${s.data_fine.toLocaleDateString("it-IT", opts)}`;
+  const formatoInizio: Intl.DateTimeFormatOptions = s.data_inizio.getFullYear() === s.data_fine.getFullYear()
+    ? { day: "numeric", month: "long" } : opts;
+  return `dal ${s.data_inizio.toLocaleDateString("it-IT", formatoInizio)} al ${s.data_fine.toLocaleDateString("it-IT", opts)}`;
 }
 
 export function toISO(d: Date): string {

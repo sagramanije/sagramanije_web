@@ -1,4 +1,3 @@
-import { CalendarDays } from "lucide-react";
 import type { GiornoProgramma } from "../../lib/programma";
 
 function formattaGiorno(giorno: Date): string {
@@ -25,24 +24,14 @@ export default function ProgrammaSagra({
   if (giorni.length === 0) return null;
 
   return (
-    <section className="mt-12" aria-labelledby="programma-sagra">
-      <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/15 text-primary-ink">
-          <CalendarDays size={22} aria-hidden="true" />
-        </span>
-        <div>
-          <p className="text-sm font-bold text-primary-ink">GIORNO PER GIORNO</p>
-          <h2 id="programma-sagra" className="font-title text-3xl">
-            Programma
-          </h2>
-        </div>
-      </div>
+    <section className="evento-riga" aria-labelledby="programma-sagra">
+      <h2 id="programma-sagra" className="evento-h2">Il programma</h2>
 
-      <div className="mt-7 space-y-7">
+      <div className="min-w-0 space-y-7">
         {giorni.map((giorno) => (
           <section key={giorno.giorno.toISOString()}>
             <h3 className="font-title text-xl">{formattaGiorno(giorno.giorno)}</h3>
-            <ol className="mt-3 overflow-hidden rounded-3xl bg-surface px-4 py-2 sm:px-6">
+            <ol className="mt-3 border-t border-beige">
               {giorno.attivita.map((attivita) => {
                 const inizio = formattaOra(attivita.ora_inizio);
                 const fine = formattaOra(attivita.ora_fine);

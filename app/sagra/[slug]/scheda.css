@@ -1,0 +1,105 @@
+.scheda-evento {
+  --color-ink: #292619;
+  --color-muted: #645e55;
+  --color-primary: #bb472b;
+  --color-primary-ink: #984122;
+  --color-cream: #fff8ee;
+  --color-beige: #e9dcca;
+  --color-warm: #746658;
+  color: var(--color-ink);
+  background: var(--color-cream);
+  flex: 1;
+}
+.scheda-evento[data-evento="mercatino"] {
+  --color-ink: #153e33;
+  --color-muted: #53645a;
+  --color-primary: #9e3536;
+  --color-primary-ink: #913335;
+  --color-cream: #faf7ef;
+  --color-beige: #dedfce;
+  --color-warm: #546457;
+}
+.evento-main { width: 100%; max-width: 72rem; padding: 1.3rem 1.5rem 4rem; margin-inline: auto; }
+.evento-percorso, .evento-coordinate, .evento-fonti, .evento-mesi {
+  display: flex; align-items: center; flex-wrap: wrap;
+}
+.evento-percorso { column-gap: .75rem; color: var(--color-muted); font-size: .875rem; }
+.evento-percorso a + a::before { content: "/"; padding-right: .75rem; color: var(--color-warm); }
+.evento-percorso a:hover, .evento-link:hover { text-decoration: underline; text-underline-offset: .2em; }
+.evento-copertina {
+  display: grid; grid-template-columns: 1.12fr 1fr; gap: clamp(2.5rem, 6vw, 5.5rem);
+  align-items: center; padding-block: clamp(1.7rem, 4vw, 3.25rem);
+}
+.evento-testo { min-width: 0; display: grid; justify-items: start; gap: 1.15rem; }
+.evento-data {
+  display: flex; align-items: center; gap: .55rem; color: var(--color-primary-ink);
+  font-size: .83rem; font-weight: 750; text-transform: uppercase; letter-spacing: .09em;
+}
+.evento-data svg, .evento-coordinate svg, .evento-testo .pulsante-guida svg { flex-shrink: 0; }
+.evento-titolo {
+  font: 740 var(--text-titolo-pagina)/1.12 var(--font-title), system-ui, sans-serif;
+  letter-spacing: -.035em; text-wrap: balance; overflow-wrap: anywhere;
+}
+.evento-titolo em { font-family: Georgia, serif; font-weight: 400; color: var(--color-primary-ink); }
+.evento-coordinate { gap: .5rem 1.35rem; color: var(--color-muted); font-size: .97rem; font-weight: 600; }
+.evento-coordinate span, .evento-link { display: inline-flex; align-items: center; gap: .45rem; }
+.evento-intro { max-width: 49ch; font-size: 1.08rem; line-height: 1.6; overflow-wrap: anywhere; }
+.evento-fonti { gap: .4rem 1.3rem; }
+.evento-testo .pulsante-guida { gap: .55rem; }
+.evento-link { min-height: 2.75rem; color: var(--color-primary-ink); font-size: .94rem; font-weight: 700; }
+.evento-cartolina { margin: .4rem .6rem; }
+.evento-locandina {
+  display: block; justify-self: center; max-width: 100%; min-width: 0;
+  color: var(--color-ink); text-decoration: none;
+}
+.evento-locandina figure { width: fit-content; max-width: 100%; transform: rotate(.7deg); }
+.evento-locandina .cartolina img {
+  display: block; width: auto; height: auto; max-width: 100%; max-height: 23rem;
+  aspect-ratio: auto; object-fit: contain; margin-inline: auto;
+}
+.evento-locandina figcaption { gap: .6rem; align-items: center; }
+.evento-locandina:hover figcaption { text-decoration: underline; }
+.evento-illustrazione { overflow: hidden; border-radius: 51% 51% .2rem .2rem / 62% 62% .2rem .2rem; }
+.evento-illustrazione img { width: 100%; aspect-ratio: 1.65; object-fit: cover; }
+.evento-articolo { border-top: 2px solid var(--color-ink); }
+.evento-articolo:empty { display: none; }
+.evento-articolo > * { padding-block: clamp(1.3rem, 3vw, 2.2rem); }
+.evento-articolo > * + * { border-top: 1px solid var(--color-beige); }
+.evento-riga { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
+.evento-h2 {
+  font: 710 var(--text-titolo-sezione)/1.2 var(--font-title), system-ui, sans-serif;
+  letter-spacing: -.025em; text-wrap: balance;
+}
+.evento-prosa { max-width: 65ch; font: 1.17rem/1.65 Georgia,serif; overflow-wrap: anywhere; white-space: pre-line; }
+.evento-prosa p + p { margin-top: 1em; }
+.evento-intestazione-aperture { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.evento-mesi { gap: .4rem; }
+.evento-mesi button {
+  border: 1px solid var(--color-warm); border-radius: 99rem; min-height: 2.75rem; padding: .5rem .95rem;
+  text-transform: capitalize; font-size: .875rem; font-weight: 700; cursor: pointer;
+}
+.evento-mesi button:hover { border-color: var(--color-ink); }
+.evento-mesi button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-cream); border-color: var(--color-ink); }
+.evento-giorni { display: flex; gap: 1.5rem 3rem; flex-wrap: wrap; margin-top: 1.3rem; padding-top: .9rem; border-top: 1px solid var(--color-beige); }
+.evento-giorni li { display: flex; align-items: baseline; gap: .65rem; font-size: .96rem; }
+.evento-giorni li > span { font: italic 2.15rem/1.15 Georgia,serif; color: var(--color-primary-ink); }
+.evento-organizza { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 1.5rem; margin-top: 1.5rem; }
+.evento-organizza > :only-child { grid-column: 1/-1; }
+@media (max-width: 47.99rem) {
+  .evento-main { padding-inline: 1.2rem; padding-bottom: 2.5rem; }
+  .evento-main:has(.evento-barra) { padding-bottom: 6.5rem; }
+  .evento-copertina, .evento-riga, .evento-organizza { grid-template-columns: minmax(0,1fr); gap: 1.1rem; }
+  .evento-testo { gap: .85rem; }
+  .evento-data { font-size: .8rem; }
+  .evento-illustrazione { display: none; }
+  .scheda-evento[data-evento="mercatino"] .evento-copertina { padding-block: 1.3rem; }
+  .scheda-evento[data-evento="mercatino"] .evento-intro { font-size: 1rem; line-height: 1.45; }
+  .evento-mesi button { padding-inline: .8rem; }
+  .evento-cartolina { width: min(100%, 28rem); justify-self: center; margin: .35rem 0; transform: rotate(.7deg); }
+  .evento-cartolina img { aspect-ratio: 2.3; }
+  .evento-locandina .cartolina img { max-height: 15rem; }
+  .evento-giorni { gap: .65rem 1.5rem; }
+}
+@media (min-width: 48rem) and (max-width: 63.99rem) {
+  .evento-main:has(.evento-barra) { padding-bottom: 6rem; }
+}

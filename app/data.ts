@@ -112,7 +112,7 @@ export const EMAIL = "sagramanije@gmail.com";
 // Contitolari del trattamento (art. 26 GDPR): dietro l'app ci sono due persone
 // fisiche, quindi l'informativa deve nominarle entrambe, non solo il marchio.
 export const PRIVACY_OWNER = "Andrea Damiani/Matteo Di Blasio";
-export const PRIVACY_UPDATED = "13 luglio 2026";
+export const PRIVACY_UPDATED = "23 novembre 2026";
 
 // Link pubblici agli store.
 export const APP_STORE_URL: string =

@@ -18,7 +18,7 @@ export default function Copertina({ natale }: { natale: boolean }) {
             <Simbolo size={17} aria-hidden /> {natale ? "La guida di Natale" : "La guida alle sagre"}
           </p>
           <h1 className="titolo-copertina">
-            {natale ? "Natale nelle" : "In festa nelle"}<br />piazze<br /><em>d’Abruzzo.</em>
+            {natale ? "Natale nelle piazze" : "In festa nelle piazze"} <em>d’Abruzzo.</em>
           </h1>
           <p className="max-w-md text-base leading-relaxed text-muted sm:text-lg">
             {natale ? "Segui le luci dei borghi abruzzesi. Trova i mercatini di Natale, scegli una data e apri la mappa per arrivare in piazza."

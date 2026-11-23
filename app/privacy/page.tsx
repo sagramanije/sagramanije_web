@@ -22,7 +22,7 @@ function Section({
 }) {
   return (
     <section id={id} className="scroll-mt-24">
-      <h2 className="font-title text-2xl tracking-tight sm:text-3xl">{title}</h2>
+      <h2 className="font-title text-titolo-sezione tracking-tight">{title}</h2>
       <div className="mt-4 flex flex-col gap-4 leading-relaxed text-muted">
         {children}
       </div>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
             Torna alla home
           </Link>
 
-          <h1 className="mt-6 font-title text-4xl leading-[1.1] tracking-tight sm:text-5xl">
+          <h1 className="mt-6 font-title text-titolo-pagina leading-[1.1] tracking-tight">
             Privacy Policy
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-muted">
@@ -304,6 +304,13 @@ export default function PrivacyPage() {
             </Section>
 
             <Section id="cookie" title="8. Cookie">
+              <p>
+                Quando avvii La Fornacella, il sito assegna al browser un codice casuale
+                in un cookie tecnico che dura un anno. Il record personale resta sul
+                dispositivo. Se premi “Pubblica il punteggio”, il server verifica le
+                mosse e conserva il miglior risultato del mese con il tuo soprannome e
+                il codice del giocatore. La classifica e il podio mostrano soprannome e punti.
+              </p>
               <p>
                 L&apos;app non usa cookie. Questo sito non usa cookie di
                 profilazione né di terze parti: le statistiche di visita sono

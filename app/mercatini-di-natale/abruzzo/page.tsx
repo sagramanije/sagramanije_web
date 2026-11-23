@@ -52,14 +52,14 @@ export default async function MercatiniPage() {
             <p className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em]">
               <MapPin size={16} aria-hidden /> La guida regionale
             </p>
-            <h1 className="max-w-lg font-title text-4xl font-bold tracking-tight sm:text-5xl">{titolo}</h1>
+            <h1 className="max-w-lg font-title text-titolo-pagina font-bold tracking-tight">{titolo}</h1>
             <p className="mt-4 max-w-lg leading-relaxed">Scegli il paese e controlla le date. Nella scheda di ogni mercatino trovi le indicazioni per raggiungerlo e il programma, quando disponibile.</p>
           </div>
           <Image src="/mercatini-abruzzo.webp" alt="" width={1500} height={1000}
             className="h-44 w-full object-cover md:h-full" sizes="(min-width: 768px) 500px, 100vw" preload />
         </header>
         <section className="mt-12" aria-labelledby="in-calendario">
-          <h2 id="in-calendario" className="font-title text-3xl">Mercatini in programma</h2>
+          <h2 id="in-calendario" className="font-title text-titolo-sezione">Mercatini in programma</h2>
           {prossimi.length ? (
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {prossimi.map((s) => <EventCard key={s.id} sagra={s} />)}

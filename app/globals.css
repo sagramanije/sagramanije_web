@@ -2,6 +2,10 @@
 
 /* Palette presa 1:1 da sagramanije/src/constants/theme.ts */
 @theme {
+  --text-titolo-pagina: clamp(1.75rem, 1.45rem + 1.35vw, 2.375rem);
+  --text-titolo-pagina--line-height: 1.12;
+  --text-titolo-sezione: clamp(1.375rem, 1.25rem + .6vw, 1.6875rem);
+  --text-titolo-sezione--line-height: 1.2;
   --color-primary: #ec5a35;
   --color-primary-ink: #b8431f; /* variante scura: l'arancione non passa AA sul bianco a testo piccolo */
   --color-cream: #fff7ee;
@@ -68,10 +72,11 @@ body {
 .copertina-testo { display: grid; justify-items: start; gap: 1.35rem; }
 .titolo-copertina {
   font-family: var(--font-title), system-ui, sans-serif;
-  font-size: clamp(3.4rem, 7vw, 5.9rem);
-  letter-spacing: -.066em;
+  font-size: clamp(2.125rem, 1.65rem + 2.6vw, 3.375rem);
+  letter-spacing: -.045em;
   font-weight: 740;
-  line-height: .93;
+  line-height: 1.04;
+  text-wrap: balance;
 }
 .titolo-copertina em {
   font-family: Georgia, serif;

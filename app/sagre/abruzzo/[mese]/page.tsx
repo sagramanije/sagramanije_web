@@ -209,7 +209,7 @@ export default async function MesePage({ params }: Props) {
           </Link>{" "}
           / {maiuscola(mese.nome)} {mese.anno}
         </p>
-        <h1 className="mt-3 font-title text-4xl leading-tight sm:text-5xl">
+        <h1 className="mt-3 font-title text-titolo-pagina leading-tight">
           Sagre in Abruzzo {aMese(mese.nome)} {mese.anno}
         </h1>
         <div className="mt-5 max-w-3xl space-y-4 text-lg leading-relaxed text-muted">
@@ -325,7 +325,7 @@ export default async function MesePage({ params }: Props) {
         </div>
 
         <section className="mt-10" aria-labelledby="province-title">
-          <h2 id="province-title" className="font-title text-2xl sm:text-3xl">
+          <h2 id="province-title" className="font-title text-titolo-sezione">
             Sagre {aMese(mese.nome)} {mese.anno} per provincia
           </h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -348,7 +348,7 @@ export default async function MesePage({ params }: Props) {
           </div>
         </section>
 
-        <h2 className="mt-14 font-title text-2xl sm:text-3xl">
+        <h2 className="mt-14 font-title text-titolo-sezione">
           Tutte le sagre in Abruzzo {aMese(mese.nome)} {mese.anno}
         </h2>
 

@@ -62,7 +62,7 @@ export default function CarovanaWhatsApp({
       </div>
 
       <p className="mt-3 text-sm text-muted leading-relaxed">
-        Non andare alla sagra da solo: manda il messaggio pronto sul gruppo WhatsApp con link, date, mappa e previsioni meteo della serata!
+        Invita la comitiva su WhatsApp con date, luogo e indicazioni per arrivare.
       </p>
 
       {/* Anteprima messaggio */}

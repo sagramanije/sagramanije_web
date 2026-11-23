@@ -68,7 +68,7 @@ export default function SupportoPage() {
                 <CircleHelp size={19} strokeWidth={2.5} />
                 Assistenza Sagramanije
               </p>
-              <h1 className="mt-3 font-title text-4xl leading-[1.08] tracking-tight sm:text-5xl">
+              <h1 className="mt-3 font-title text-titolo-pagina leading-[1.08] tracking-tight">
                 Come possiamo aiutarti?
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
@@ -104,7 +104,7 @@ export default function SupportoPage() {
           </div>
 
           <section className="mt-16">
-            <h2 className="font-title text-3xl tracking-tight sm:text-4xl">
+            <h2 className="font-title text-titolo-sezione tracking-tight">
               Soluzioni rapide
             </h2>
             <p className="mt-3 max-w-2xl text-muted">

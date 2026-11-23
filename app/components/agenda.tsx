@@ -102,7 +102,7 @@ export default function Agenda({ eventi, province, disponibile }: Props) {
   return (
     <section id="prossime-sagre" className="mx-auto max-w-6xl scroll-mt-28 px-5 py-12 sm:px-6 md:py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h2 className="font-title text-4xl font-bold tracking-tight sm:text-5xl">Dove andiamo?</h2>
+        <h2 className="font-title text-titolo-sezione font-bold tracking-tight">Dove andiamo?</h2>
         <button type="button" aria-pressed={soloSalvati} className="agenda-pill flex items-center gap-2"
           onClick={() => { setSoloSalvati(!soloSalvati); cambiaFiltro(); }}>
           <Bookmark size={16} aria-hidden /> Salvati ({attiviSalvati})

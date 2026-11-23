@@ -109,7 +109,7 @@ export default function RouletteSagra({ sagre }: RouletteSagraProps) {
           NON SAI DOVE ANDARE STASERA?
         </span>
 
-        <h2 className="mt-3 font-title text-3xl sm:text-4xl text-ink">
+        <h2 className="mt-3 font-title text-titolo-sezione text-ink">
           Tocc&apos; a &apos;ndà — La Roulette della Sagra
         </h2>
 

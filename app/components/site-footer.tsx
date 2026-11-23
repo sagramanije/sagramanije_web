@@ -16,6 +16,7 @@ export default function SiteFooter() {
             Calendario delle sagre in Abruzzo
           </Link>
           <Link href={MERCATINI_PATH} className="text-sm font-semibold text-muted hover:text-ink">Mercatini di Natale in Abruzzo</Link>
+          <Link href="/fornacella" className="text-sm font-semibold text-muted hover:text-ink">Gioca a La Fornacella</Link>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted sm:items-end">
           <a href={`mailto:${EMAIL}`} className="font-semibold text-blue-ink">

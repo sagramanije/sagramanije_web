@@ -91,7 +91,7 @@ export default async function QuestoWeekendPage() {
           </Link>{" "}
           / Questo weekend
         </p>
-        <h1 className="mt-3 font-title text-4xl leading-tight sm:text-5xl">
+        <h1 className="mt-3 font-title text-titolo-pagina leading-tight">
           Sagre in Abruzzo questo weekend
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
@@ -114,6 +114,7 @@ export default async function QuestoWeekendPage() {
 
         <section className="mt-14 rounded-3xl bg-surface p-8">
           <h2 className="font-title text-2xl">Non solo questo weekend</h2>
+          <Link href="/fornacella" className="mt-3 inline-block font-bold text-primary-ink underline">Gioca a La Fornacella</Link>
           <p className="mt-2 max-w-xl text-muted">
             Guarda{" "}
             <Link
