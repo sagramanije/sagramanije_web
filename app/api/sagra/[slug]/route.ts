@@ -1,18 +1,17 @@
-import { getSagraBySlug, getSagreAbruzzo } from "@/lib/sagre";
+import { getSagraBySlug } from "@/lib/sagre";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Risolve uno slug (di scheda o di doppione) o un id nella sagra da aprire:
+ * per le schede con più edizioni è quella in corso o la prossima.
+ */
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  let sagra = await getSagraBySlug(slug);
-
-  if (!sagra && !isNaN(Number(slug))) {
-    const sagre = await getSagreAbruzzo();
-    sagra = sagre.find((s) => s.id === Number(slug));
-  }
+  const sagra = await getSagraBySlug(slug);
 
   if (!sagra) {
     return Response.json(

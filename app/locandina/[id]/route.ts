@@ -2,7 +2,7 @@ import type { IncomingMessage } from "node:http";
 import sharp from "sharp";
 import { richiediUrlHttpsPubblico } from "../../../lib/public-image-fetch";
 import {
-  getSagreAbruzzo,
+  getTutteLeSagre,
   locandinaOriginale,
   versioneLocandina,
 } from "../../../lib/sagre";
@@ -41,7 +41,7 @@ async function mappaLocandine(forza = false): Promise<Map<number, Locandina>> {
   if (!forza && cache && Date.now() < cache.scade) return cache.mappa;
   inCorso ??= (async () => {
     const mappa = new Map<number, Locandina>();
-    for (const s of await getSagreAbruzzo()) {
+    for (const s of await getTutteLeSagre()) {
       const url = locandinaOriginale(s);
       if (url) mappa.set(s.id, { url, versione: versioneLocandina(url) });
     }

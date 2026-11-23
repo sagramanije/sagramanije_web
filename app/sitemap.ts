@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import {
   eConclusa,
   getSagreAbruzzo,
+  getSchede,
   mesePassato,
   mesiConSagre,
   PROVINCE,
@@ -58,7 +59,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: passato ? 0.3 : 0.8,
       };
     });
-    const eventi = sagre.map((s) => ({
+    // Una voce per scheda: doppioni ed edizioni passate vivono sotto lo
+    // stesso URL, gli altri loro indirizzi fanno solo redirect.
+    const eventi = (await getSchede()).map((s) => ({
       url: `${SITE_URL}/sagra/${s.slug}`,
       changeFrequency: eConclusa(s) ? ("yearly" as const) : ("weekly" as const),
       priority: eConclusa(s) ? 0.3 : 0.6,

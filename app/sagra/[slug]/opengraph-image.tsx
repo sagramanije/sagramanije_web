@@ -2,7 +2,7 @@ import { OG_CONTENT_TYPE, OG_SIZE, ogCard } from "../../../lib/og";
 import {
   formatIntervallo,
   getSagraBySlug,
-  getSagreAbruzzo,
+  getSchede,
 } from "../../../lib/sagre";
 
 export const alt = "Sagre e feste di paese in Abruzzo";
@@ -13,7 +13,7 @@ export const contentType = OG_CONTENT_TYPE;
 // una volta in build come la pagina che accompagna.
 export async function generateStaticParams() {
   try {
-    return (await getSagreAbruzzo()).map((s) => ({ slug: s.slug }));
+    return (await getSchede()).map((s) => ({ slug: s.slug }));
   } catch {
     return [];
   }

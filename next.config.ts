@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  async redirects() {
+    return [
+      // www.sagramanije.it rispondeva 200 con le stesse pagine: un secondo
+      // host con contenuti duplicati. Il canonical bastava a Google per
+      // scegliere, ma un 301 non gli lascia nulla da scegliere.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.sagramanije.it" }],
+        destination: "https://sagramanije.it/:path*",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     // Le locandine arrivano come multipart nelle Server Actions. Il limite
     // include anche l'overhead del form, non soltanto i byte del file.

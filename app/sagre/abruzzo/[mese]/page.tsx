@@ -5,7 +5,9 @@ import EventCard from "../../../components/event-card";
 import SiteFooter from "../../../components/site-footer";
 import SiteNav from "../../../components/site-nav";
 import {
+  eMercatino,
   getSagreAbruzzo,
+  mesePassato,
   mesiConSagre,
   parseMeseSlug,
   PROVINCE,
@@ -14,7 +16,7 @@ import {
   sagreNelWeekend,
   weekendCorrente,
 } from "../../../../lib/sagre";
-import { OG_DEFAULTS, SITE_URL } from "../../../../lib/site";
+import { MERCATINI_PATH, OG_DEFAULTS, SITE_URL } from "../../../../lib/site";
 
 export const revalidate = 21_600;
 
@@ -27,6 +29,33 @@ function maiuscola(s: string) {
 // "ad agosto", "ad aprile", ma "a luglio" (d eufonica solo davanti ad a-).
 function aMese(nome: string) {
   return nome.startsWith("a") ? `ad ${nome}` : `a ${nome}`;
+}
+
+// Cosa caratterizza il mese nelle feste abruzzesi. È il testo che distingue
+// davvero una pagina mese dall'altra: il resto dell'introduzione viene dai dati.
+const STAGIONE: string[] = [
+  "Gennaio è il mese dei fuochi di Sant'Antonio Abate, intorno al 17: in molti paesi si accendono i falò e si benedicono gli animali, con cene a base di maiale e dei prodotti dell'inverno.",
+  "Febbraio è il mese del Carnevale: sfilate di carri e maschere nei paesi, con chiacchiere, castagnole e gli altri dolci fritti della tradizione.",
+  "A marzo il calendario si apre con San Giuseppe, il 19, quando in diversi paesi si preparano le tavole del santo e si friggono le zeppole, e con le prime feste di primavera.",
+  "Aprile porta la Pasqua e le sue tradizioni, dalle processioni alla pizza di Pasqua e ai fiadoni, e le prime giornate all'aperto della primavera.",
+  "A maggio tornano le feste patronali e le prime sagre all'aperto, con i prodotti di stagione come le fave e il pecorino.",
+  "Giugno apre la stagione estiva delle sagre: le serate si allungano, le piazze si riempiono di stand gastronomici e cominciano le feste di paese che vanno avanti fino a settembre.",
+  "Luglio è piena stagione: arrosticini e cucina di montagna nell'entroterra, pesce sulla costa, e quasi ogni fine settimana più feste di paese in contemporanea.",
+  "Agosto è il mese con più sagre dell'anno, con il picco intorno a Ferragosto: tra costa, colline e montagna quasi ogni paese ha la sua festa.",
+  "Settembre è il mese della vendemmia: feste dell'uva e del vino, peperoni e prodotti dell'orto, e le ultime grandi sagre all'aperto prima dell'autunno.",
+  "Ottobre porta i sapori dell'autunno: castagne, funghi, tartufo e vino nuovo, nelle feste dei paesi dell'entroterra e della montagna.",
+  "Novembre è il mese di San Martino, l'11, con il vino novello, le castagne arrostite e l'olio nuovo appena franto: le feste si spostano spesso al chiuso o sotto tendoni riscaldati.",
+  "Dicembre è il mese dei mercatini di Natale e dei presepi viventi, che accompagnano i paesi dall'Immacolata fino all'Epifania.",
+];
+
+function conteggio(n: number, uno: string, molti: string) {
+  return n === 1 ? `1 ${uno}` : `${n} ${molti}`;
+}
+
+function elencoNaturale(parti: string[]) {
+  return parti.length <= 1
+    ? parti.join("")
+    : `${parti.slice(0, -1).join(", ")} e ${parti[parti.length - 1]}`;
 }
 
 function toccaIlGiorno(
@@ -66,9 +95,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `Tutte le ${quante} sagre e feste di paese`
     : "Le sagre e le feste di paese";
 
+  // Un mese passato non è "in aggiornamento": lo snippet lo dice com'è.
+  const coda = mesePassato(mese)
+    ? "date, paesi e schede di ogni evento, con le edizioni in arrivo."
+    : "date, orari e paesi, in aggiornamento continuo. Trovale sulla mappa con l'app Sagramanije.";
+
   return {
     title: titolo,
-    description: `${elenco} in Abruzzo ${aMese(mese.nome)} ${mese.anno}: date, orari e paesi, in aggiornamento continuo. Trovale sulla mappa con l'app Sagramanije.`,
+    description: `${elenco} in Abruzzo ${aMese(mese.nome)} ${mese.anno}: ${coda}`,
     alternates: { canonical: `/sagre/abruzzo/${slug}` },
     openGraph: { ...OG_DEFAULTS, title: titolo, url: `/sagre/abruzzo/${slug}` },
   };
@@ -85,6 +119,29 @@ export default async function MesePage({ params }: Props) {
 
   const altriMesi = mesiConSagre(sagre).filter((m) => m.slug !== slug);
   const esempi = delMese.slice(0, 3);
+  const passato = mesePassato(mese);
+
+  // Composizione del mese, per un'introduzione fatta di dati veri.
+  const mercatini = delMese.filter(eMercatino).length;
+  const sagreVere = delMese.filter(
+    (s) => !eMercatino(s) && s.category?.toLowerCase() === "sagra",
+  ).length;
+  const altriEventi = delMese.length - mercatini - sagreVere;
+  const composizione = elencoNaturale(
+    [
+      sagreVere ? conteggio(sagreVere, "sagra", "sagre") : "",
+      altriEventi ? conteggio(altriEventi, "festa o evento", "feste ed eventi") : "",
+      mercatini ? conteggio(mercatini, "mercatino", "mercatini") : "",
+    ].filter(Boolean),
+  );
+  const perPaese = new Map<string, number>();
+  for (const s of delMese) {
+    if (s.citta) perPaese.set(s.citta, (perPaese.get(s.citta) ?? 0) + 1);
+  }
+  const paesiAttivi = [...perPaese.entries()]
+    .filter(([, n]) => n > 1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
   const perProvincia = PROVINCE.map((provincia) => ({
     provincia,
     sagre: sagreDiProvincia(delMese, provincia),
@@ -157,21 +214,25 @@ export default async function MesePage({ params }: Props) {
         </h1>
         <div className="mt-5 max-w-3xl space-y-4 text-lg leading-relaxed text-muted">
           <p>
-            Cerchi cosa fare in Abruzzo {aMese(mese.nome)} {mese.anno}? In
-            questa pagina trovi {delMese.length === 1 ? "una sagra" : `${delMese.length} sagre`},
-            feste di paese e appuntamenti enogastronomici in programma nelle
-            province di Teramo, Pescara, Chieti e L&apos;Aquila, ordinati per
-            data e località.
+            {passato
+              ? `${maiuscola(aMese(mese.nome))} ${mese.anno} in Abruzzo si sono tenuti ${conteggio(delMese.length, "appuntamento", "appuntamenti")}: ${composizione}. Qui sotto trovi l'elenco completo, in ordine di data, con la scheda di ciascuno.`
+              : `Cerchi cosa fare in Abruzzo ${aMese(mese.nome)} ${mese.anno}? In calendario ci sono ${conteggio(delMese.length, "appuntamento", "appuntamenti")}: ${composizione}, in ordine di data e con la scheda di ciascuno.`}
           </p>
           <p>
-            Il calendario viene aggiornato man mano che troviamo nuove date
-            pubblicate dagli organizzatori. Ogni scheda riporta il paese, il
-            periodo, gli orari disponibili e la locandina, così puoi verificare
-            subito quando si svolge l&apos;evento e aprire tutti i dettagli prima
-            di partire.
+            {STAGIONE[mese.indice]}
+            {mese.indice === 11 ? (
+              <>
+                {" "}
+                Li trovi raccolti anche nel{" "}
+                <Link href={MERCATINI_PATH} className="font-bold text-primary-ink hover:underline">
+                  calendario dei mercatini di Natale in Abruzzo
+                </Link>
+                .
+              </>
+            ) : null}
           </p>
           <p>
-            Nel dettaglio, il calendario conta{" "}
+            Per provincia:{" "}
             {perProvincia.map(({ provincia, sagre: sagreProvincia }, indice) => (
               <span key={provincia.slug}>
                 {indice > 0
@@ -182,11 +243,13 @@ export default async function MesePage({ params }: Props) {
                 {sagreProvincia.length} in provincia di {provincia.nome}
               </span>
             ))}
-            . Il riepilogo per provincia ti permette di restringere subito la
-            ricerca alla zona più comoda, senza scorrere l&apos;intero elenco.
+            .
+            {paesiAttivi.length > 0
+              ? ` ${paesiAttivi.length === 1 ? "Il paese" : "I paesi"} con più appuntamenti nel mese: ${elencoNaturale(paesiAttivi.map(([paese, n]) => `${paese} (${n})`))}.`
+              : ""}
           </p>
           <p>
-            Tra gli appuntamenti già in calendario ci sono{" "}
+            {passato ? "Tra gli appuntamenti del mese c'erano " : "Tra gli appuntamenti in calendario ci sono "}
             {esempi.map((sagra, indice) => (
               <span key={sagra.slug}>
                 {indice > 0 ? (indice === esempi.length - 1 ? " e " : ", ") : ""}
@@ -198,10 +261,10 @@ export default async function MesePage({ params }: Props) {
                 </Link>
               </span>
             ))}
-            . Puoi partire dalle proposte del weekend, dagli eventi di
-            Ferragosto quando presenti oppure dal calendario della provincia
-            che ti interessa. Le stesse sagre sono disponibili nell&apos;app
-            Sagramanije, anche sulla mappa.
+            .{" "}
+            {passato
+              ? "Molte tornano ogni anno: nella scheda di ciascuna trovi le edizioni passate e le prossime sagre in programma lì vicino."
+              : "Le date arrivano dagli organizzatori e il calendario si aggiorna man mano che ne vengono pubblicate di nuove."}
           </p>
         </div>
 

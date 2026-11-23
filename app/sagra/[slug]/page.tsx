@@ -1,7 +1,8 @@
 import { Calendar, Clock, ExternalLink, MapPin, Navigation } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import EventCard from "../../components/event-card";
 import SiteFooter from "../../components/site-footer";
 import SiteNav from "../../components/site-nav";
 import StripedPlaceholder from "../../components/striped-placeholder";
@@ -15,13 +16,16 @@ import {
   eMercatino,
   eventJsonLd,
   formatIntervallo,
-  getSagraBySlug,
   getSagreAbruzzo,
+  getScheda,
+  getTuttiGliSlugSagra,
   locandinaProxyUrl,
   meseDi,
   metaDescrizione,
   paragrafi,
+  PROVINCE,
   riassunto,
+  sagreVicine,
   toISO,
 } from "../../../lib/sagre";
 import { getProgrammaSagra } from "../../../lib/programma";
@@ -31,12 +35,12 @@ export const revalidate = 21_600;
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Schede, slug dei doppioni e id: gli ultimi due fanno solo 301 verso la
+// scheda, ma vanno pre-renderizzati o Next risponde 404 senza eseguire il
+// redirect (vedi AGENTS.md).
 export async function generateStaticParams() {
   try {
-    const sagre = await getSagreAbruzzo();
-    const slugs = sagre.map((s) => ({ slug: s.slug }));
-    const ids = sagre.map((s) => ({ slug: s.id.toString() }));
-    return [...slugs, ...ids];
+    return (await getTuttiGliSlugSagra()).map((slug) => ({ slug }));
   } catch {
     return [];
   }
@@ -44,12 +48,10 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  let sagra = await getSagraBySlug(slug);
-  if (!sagra && !isNaN(Number(slug))) {
-    const sagre = await getSagreAbruzzo();
-    sagra = sagre.find((s) => s.id === Number(slug));
-  }
-  if (!sagra) return {};
+  const scheda = await getScheda(slug);
+  // Per i redirect i metadati non servono: la pagina risponde 308.
+  if (scheda?.tipo !== "scheda") return {};
+  const { sagra } = scheda;
   const anno = sagra.data_inizio?.getFullYear();
   const luogo = sagra.citta
     ? ` a ${sagra.citta}${sagra.provincia ? ` (${sagra.provincia})` : ""}`
@@ -71,19 +73,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SagraPage({ params }: Props) {
   const { slug } = await params;
-  let sagra = await getSagraBySlug(slug);
+  const scheda = await getScheda(slug);
 
-  if (!sagra && !isNaN(Number(slug))) {
-    const sagre = await getSagreAbruzzo();
-    sagra = sagre.find((s) => s.id === Number(slug));
-    if (sagra) {
-      redirect(`/sagra/${sagra.slug}`);
-    }
-  }
+  if (!scheda) notFound();
+  // Doppioni e id: un solo URL per sagra, gli altri indirizzi passano la
+  // mano (e i link che hanno accumulato) alla scheda.
+  if (scheda.tipo === "redirect") permanentRedirect(`/sagra/${scheda.slug}`);
 
-  if (!sagra) notFound();
+  const { sagra, edizioni } = scheda;
   const programma = await getProgrammaSagra(sagra.id);
-  
+  const vicine = sagreVicine(sagra, await getSagreAbruzzo());
+  const provincia = PROVINCE.find((p) => p.sigla === sagra.provincia?.toUpperCase()) ?? null;
+
   const mese = sagra.data_inizio ? meseDi(sagra.data_inizio) : null;
   const mercatino = eMercatino(sagra);
   const conclusa = eConclusa(sagra);
@@ -94,7 +95,7 @@ export default async function SagraPage({ params }: Props) {
   // che però è quasi identico per tutte le sagre: come testo di pagina vale poco.
   const descrizione = paragrafi(sagra);
 
-  const jsonLd = eventJsonLd(sagra, `${SITE_URL}/sagra/${slug}`);
+  const jsonLd = eventJsonLd(sagra, `${SITE_URL}/sagra/${sagra.slug}`);
   // Stessa scala dei breadcrumb visibili in pagina: home / Abruzzo / mese / evento.
   const breadcrumb = {
     "@context": "https://schema.org",
@@ -344,6 +345,80 @@ export default async function SagraPage({ params }: Props) {
             </section>
           </div>
         </div>
+
+        {/* Edizioni: la scheda è una sola per sagra, anno dopo anno */}
+        {edizioni.length > 1 ? (
+          <section className="mt-14" aria-labelledby="edizioni-title">
+            <h2 id="edizioni-title" className="font-title text-2xl sm:text-3xl">
+              Le edizioni di {sagra.nome_sagra}
+            </h2>
+            <ul className="mt-4 space-y-2 text-muted">
+              {[...edizioni].reverse().map((e) => (
+                <li key={e.id} className="flex flex-wrap gap-x-2">
+                  <span className="font-bold text-ink">
+                    {e.data_inizio ? e.data_inizio.getFullYear() : "Data da confermare"}
+                  </span>
+                  <span>
+                    {formatIntervallo(e)}
+                    {e.citta && e.citta !== sagra.citta ? `, ${e.citta}` : ""}
+                    {e.id === sagra.id ? " (questa edizione)" : eConclusa(e) ? " (conclusa)" : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {/* Le sagre in programma più vicine: il motivo per restare anche
+            quando l'edizione cercata è già passata */}
+        {vicine.length > 0 ? (
+          <section className="mt-14" aria-labelledby="vicine-title">
+            <h2 id="vicine-title" className="font-title text-2xl sm:text-3xl">
+              {conclusa
+                ? `Le prossime ${mercatino ? "date" : "sagre"} vicino a ${sagra.citta ?? "qui"}`
+                : `Altre ${mercatino ? "date" : "sagre"} in programma vicino a ${sagra.citta ?? "qui"}`}
+            </h2>
+            <p className="mt-2 text-muted">
+              {mercatino ? "I mercatini" : "Le sagre e le feste"} in calendario più
+              vicine, con la distanza in linea d&apos;aria da {sagra.citta ?? "questo evento"}.
+            </p>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {vicine.map((s) => (
+                <div key={s.slug} className="relative">
+                  <EventCard sagra={s} />
+                  <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-bold text-ink shadow-xs">
+                    {s.km < 1 ? "meno di 1 km" : `${Math.round(s.km)} km`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <nav className="mt-10 flex flex-wrap gap-3" aria-label="Altri calendari">
+          {provincia ? (
+            <Link
+              href={`/sagre/abruzzo/provincia/${provincia.slug}`}
+              className="rounded-full bg-beige px-4 py-2 text-sm font-bold hover:bg-primary hover:text-white"
+            >
+              Sagre in provincia di {provincia.nome}
+            </Link>
+          ) : null}
+          {mese ? (
+            <Link
+              href={`/sagre/abruzzo/${mese.slug}`}
+              className="rounded-full bg-beige px-4 py-2 text-sm font-bold hover:bg-primary hover:text-white"
+            >
+              Sagre di {mese.nome} {mese.anno}
+            </Link>
+          ) : null}
+          <Link
+            href="/sagre/abruzzo/questo-weekend"
+            className="rounded-full bg-beige px-4 py-2 text-sm font-bold hover:bg-primary hover:text-white"
+          >
+            Sagre di questo weekend
+          </Link>
+        </nav>
 
         {/* Barra fissa in basso su mobile (per condividere su WhatsApp e navigare al volo) */}
         <SagraBottomBar

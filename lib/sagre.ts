@@ -78,15 +78,26 @@ const SagraApi = z.object({
 const NearbyResponse = z.object({ risultati: z.array(SagraApi) });
 
 // L'archivio committato in data/: le sagre già viste, con lo slug che è stato
-// loro assegnato. Stessa forma dell'API, più lo slug.
+// loro assegnato. Stessa forma dell'API, più lo slug del record e quello della
+// scheda in cui confluisce (assente nei record archiviati prima che esistesse).
 const ArchivioFile = z.object({
   aggiornato: z.string().nullable(),
-  sagre: z.array(SagraApi.extend({ slug: z.string() })),
+  sagre: z.array(SagraApi.extend({ slug: z.string(), scheda: z.string().optional() })),
 });
 
 type SagraApiT = z.infer<typeof SagraApi>;
 
-export type Sagra = SagraApiT & { slug: string };
+/**
+ * Una sagra (un record dell'API) con i suoi due slug.
+ *
+ * - `slug` è l'URL pubblico della scheda: è quello da usare in ogni link.
+ *   Doppioni della stessa edizione ed edizioni di anni diversi condividono la
+ *   stessa scheda, così ogni sagra ha un solo URL che accumula storia e link.
+ * - `slugProprio` è lo slug assegnato al singolo record la prima volta che
+ *   l'abbiamo visto. Se diverso da `slug`, quell'URL esiste ancora ma fa 301
+ *   verso la scheda.
+ */
+export type Sagra = SagraApiT & { slug: string; slugProprio: string };
 
 // Stessa precedenza dell’app mobile. I record storici possono avere solo il titolo.
 export function eMercatino(s: Pick<Sagra, "tipo" | "category" | "nome_sagra">) {
@@ -124,8 +135,10 @@ async function fetchLive(): Promise<SagraApiT[]> {
   );
 }
 
-/** Le sagre già archiviate, con lo slug che avevano al momento dell'archiviazione. */
-function leggiArchivio(): Sagra[] {
+type Archiviata = z.infer<typeof ArchivioFile>["sagre"][number];
+
+/** Le sagre già archiviate, con gli slug che avevano al momento dell'archiviazione. */
+function leggiArchivio(): Archiviata[] {
   const parsed = ArchivioFile.safeParse(archivioJson);
   // Un archivio corrotto non deve mandare giù il sito: peggio che vada,
   // si torna al comportamento di prima (solo API).
@@ -133,32 +146,201 @@ function leggiArchivio(): Sagra[] {
 }
 
 /**
- * Assegna gli slug. Quelli già in archivio sono CONGELATI e non si ricalcolano
- * mai: un URL pubblicato non deve cambiare per nessun motivo, nemmeno se in
- * futuro arriva un'omonima che gli contenderebbe lo slug corto.
+ * Assegna gli slug dei singoli record. Quelli già in archivio sono CONGELATI e
+ * non si ricalcolano mai: un URL pubblicato non deve cambiare per nessun
+ * motivo, nemmeno se in futuro arriva un'omonima che gli contenderebbe lo slug
+ * corto.
  */
-function assegnaSlug(sagre: SagraApiT[], congelati: Map<number, string>): Sagra[] {
+function assegnaSlugPropri(
+  sagre: SagraApiT[],
+  congelati: Map<number, string>,
+): (SagraApiT & { slugProprio: string })[] {
   const presi = new Set(congelati.values());
   return sagre.map((s) => {
     const gia = congelati.get(s.id);
-    if (gia) return { ...s, slug: gia };
+    if (gia) return { ...s, slugProprio: gia };
 
     const base = slugify(`${s.nome_sagra} ${s.citta ?? ""}`) || String(s.id);
     const slug = presi.has(base) ? `${base}-${s.id}` : base;
     presi.add(slug);
-    return { ...s, slug };
+    return { ...s, slugProprio: slug };
   });
+}
+
+// --- schede: doppioni ed edizioni della stessa sagra ---
+
+// Numerale romano valido (II, XII, XXX…). Da solo matcherebbe anche parole
+// italiane come "di" o "vi", quindi lo si usa solo in posizioni da edizione.
+const ROMANO = /^m{0,3}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})$/;
+
+/**
+ * Il nome della sagra senza ciò che cambia da un'edizione all'altra: ordinali
+ * ("17ª", "XXX"), anni e la parola "edizione". "17ª Sagra della Polenta" e
+ * "18ª Sagra della Polenta" danno la stessa chiave.
+ */
+function nomeSenzaEdizione(nome: string): string {
+  const token = slugify(nome).split("-").filter(Boolean);
+  const tenuti = token.filter((t, i) => {
+    if (/^\d+[a-z]?$/.test(t)) return false; // 17, 2026, 8a (da "8ª")
+    if (t === "edizione" || t === "ed") return false;
+    const romano = t.length > 0 && ROMANO.test(t);
+    // Romano in testa ("XXX Sagra…") o prima di "edizione" ("XII Edizione").
+    if (romano && (i === 0 || token[i + 1] === "edizione" || token[i + 1] === "ed")) return false;
+    return true;
+  });
+  return tenuti.join("-");
+}
+
+function chiaveScheda(s: SagraApiT): string {
+  const nome = nomeSenzaEdizione(s.nome_sagra);
+  // Un nome fatto solo di numeri non identifica niente: niente accorpamenti.
+  if (!nome) return `id:${s.id}`;
+  return `${nome}|${slugify(s.citta ?? "")}`;
+}
+
+// Due record della stessa sagra a meno di una settimana di distanza sono la
+// stessa edizione arrivata da due fonti (spesso con date sfasate di un giorno).
+const STESSA_EDIZIONE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function stessaEdizione(a: SagraApiT, b: SagraApiT): boolean {
+  if (!a.data_inizio || !b.data_inizio) return false;
+  return Math.abs(a.data_inizio.getTime() - b.data_inizio.getTime()) <= STESSA_EDIZIONE_MS;
+}
+
+/** Fra due doppioni della stessa edizione, quello con più contenuto. */
+function punteggio(s: SagraApiT): number {
+  return (
+    (s.descrizione ? 4 : 0) +
+    (s.locandina ? 2 : 0) +
+    (s.ora_inizio ? 1 : 0) +
+    (s.descrizione?.length ?? 0) / 100_000
+  );
+}
+
+/** Slug "pulito": senza il suffisso -id anti-collisione e senza l'ordinale in testa. */
+function slugPulito(s: { id: number; slugProprio: string }): boolean {
+  return !s.slugProprio.endsWith(`-${s.id}`) && !/^\d+-/.test(s.slugProprio);
+}
+
+/**
+ * Fonti diverse chiamano la stessa sagra in modi diversi ("Marsicaland" e
+ * "Festival diffuso dell'agroalimentare – Marsicaland"). Se due record hanno
+ * lo stesso paese, le stesse identiche date e le parole di un nome sono tutte
+ * contenute nell'altro, sono lo stesso evento: i loro gruppi diventano uno.
+ */
+function unisciDoppioniConNomiDiversi(
+  gruppi: Map<string, (SagraApiT & { slugProprio: string })[]>,
+): void {
+  const gruppoDi = new Map<number, string>();
+  for (const [k, g] of gruppi) for (const s of g) gruppoDi.set(s.id, k);
+
+  const parole = (s: SagraApiT) => new Set(nomeSenzaEdizione(s.nome_sagra).split("-").filter(Boolean));
+  const contenuto = (a: Set<string>, b: Set<string>) => a.size > 0 && [...a].every((p) => b.has(p));
+
+  const tutti = [...gruppi.values()].flat();
+  for (let i = 0; i < tutti.length; i++) {
+    for (let j = i + 1; j < tutti.length; j++) {
+      const a = tutti[i];
+      const b = tutti[j];
+      if (!a.data_inizio || !b.data_inizio) continue;
+      if (a.data_inizio.getTime() !== b.data_inizio.getTime()) continue;
+      if ((a.data_fine?.getTime() ?? 0) !== (b.data_fine?.getTime() ?? 0)) continue;
+      if (!a.citta || slugify(a.citta) !== slugify(b.citta ?? "")) continue;
+
+      const ka = gruppoDi.get(a.id)!;
+      const kb = gruppoDi.get(b.id)!;
+      if (ka === kb) continue;
+      const pa = parole(a);
+      const pb = parole(b);
+      if (!contenuto(pa, pb) && !contenuto(pb, pa)) continue;
+
+      // Sposta tutto il gruppo di b dentro quello di a.
+      const daSpostare = gruppi.get(kb)!;
+      gruppi.get(ka)!.push(...daSpostare);
+      for (const s of daSpostare) gruppoDi.set(s.id, ka);
+      gruppi.delete(kb);
+    }
+  }
+}
+
+type Catalogo = {
+  /** Tutti i record, doppioni compresi. Serve all'archivio e alle locandine. */
+  tutte: Sagra[];
+  /** Un record per edizione: quello che va negli elenchi. */
+  edizioni: Sagra[];
+  /** Scheda → le sue edizioni, in ordine di data. */
+  perScheda: Map<string, Sagra[]>;
+  /** Slug di un singolo record che non è la sua scheda → scheda (redirect). */
+  alias: Map<string, string>;
+};
+
+function costruisciCatalogo(
+  sagre: (SagraApiT & { slugProprio: string })[],
+  schedeCongelate: Map<number, string>,
+): Catalogo {
+  const gruppi = new Map<string, (SagraApiT & { slugProprio: string })[]>();
+  for (const s of sagre) {
+    const k = chiaveScheda(s);
+    const g = gruppi.get(k);
+    if (g) g.push(s);
+    else gruppi.set(k, [s]);
+  }
+  unisciDoppioniConNomiDiversi(gruppi);
+
+  const tutte: Sagra[] = [];
+  const edizioni: Sagra[] = [];
+  const perScheda = new Map<string, Sagra[]>();
+  const alias = new Map<string, string>();
+
+  for (const gruppo of gruppi.values()) {
+    // La scheda, una volta scelta, è congelata in archivio come gli slug: se
+    // un membro ce l'ha già, vale quella. Altrimenti il più vecchio con uno
+    // slug pulito, o semplicemente il più vecchio.
+    const perId = [...gruppo].sort((a, b) => a.id - b.id);
+    const congelata = perId.map((s) => schedeCongelate.get(s.id)).find(Boolean);
+    const scheda =
+      congelata ?? (perId.find(slugPulito) ?? perId[0]).slugProprio;
+
+    const membri: Sagra[] = gruppo.map((s) => ({ ...s, slug: scheda }));
+    tutte.push(...membri);
+    for (const m of membri) {
+      if (m.slugProprio !== scheda) alias.set(m.slugProprio, scheda);
+    }
+
+    // Edizioni: i membri in ordine di data, raggruppando i doppioni vicini.
+    const inOrdine = [...membri].sort(
+      (a, b) => (a.data_inizio?.getTime() ?? Infinity) - (b.data_inizio?.getTime() ?? Infinity),
+    );
+    const scelte: Sagra[] = [];
+    for (const m of inOrdine) {
+      const ultima = scelte.at(-1);
+      if (ultima && stessaEdizione(ultima, m)) {
+        if (punteggio(m) > punteggio(ultima)) scelte[scelte.length - 1] = m;
+      } else {
+        scelte.push(m);
+      }
+    }
+    edizioni.push(...scelte);
+    perScheda.set(scheda, scelte);
+  }
+
+  const perData = (a: Sagra, b: Sagra) =>
+    (a.data_inizio?.getTime() ?? Infinity) - (b.data_inizio?.getTime() ?? Infinity);
+  tutte.sort(perData);
+  edizioni.sort(perData);
+
+  return { tutte, edizioni, perScheda, alias };
 }
 
 /**
  * Tutte le sagre abruzzesi che conosciamo — quelle in cartellone più quelle
- * archiviate — ordinate per data di inizio.
+ * archiviate — raggruppate in schede.
  *
  * L'API restituisce solo gli eventi futuri: quando una sagra finisce sparisce
  * di lì, e senza archivio la sua pagina diventerebbe un 404. L'unione con
  * l'archivio è ciò che tiene vivi (e indicizzati) gli anni passati.
  */
-export async function getSagreAbruzzo(): Promise<Sagra[]> {
+async function getCatalogo(): Promise<Catalogo> {
   const archiviate = leggiArchivio();
 
   let live: SagraApiT[] = [];
@@ -175,11 +357,30 @@ export async function getSagreAbruzzo(): Promise<Sagra[]> {
   for (const s of archiviate) perId.set(s.id, s);
   for (const s of live) perId.set(s.id, s);
 
-  const tutte = [...perId.values()].sort(
-    (a, b) => (a.data_inizio?.getTime() ?? Infinity) - (b.data_inizio?.getTime() ?? Infinity),
+  const conSlug = assegnaSlugPropri(
+    [...perId.values()],
+    new Map(archiviate.map((s) => [s.id, s.slug])),
   );
+  const schedeCongelate = new Map<number, string>();
+  for (const s of archiviate) if (s.scheda) schedeCongelate.set(s.id, s.scheda);
 
-  return assegnaSlug(tutte, new Map(archiviate.map((s) => [s.id, s.slug])));
+  return costruisciCatalogo(conSlug, schedeCongelate);
+}
+
+/**
+ * Le sagre da mostrare negli elenchi, ordinate per data: una per edizione,
+ * senza i doppioni arrivati da fonti diverse. Ognuna linka la sua scheda.
+ */
+export async function getSagreAbruzzo(): Promise<Sagra[]> {
+  return (await getCatalogo()).edizioni;
+}
+
+/**
+ * Tutti i record, doppioni compresi, con i loro slug. Per l'archivio (che
+ * deve congelarli tutti) e per chi cerca una sagra per id.
+ */
+export async function getTutteLeSagre(): Promise<Sagra[]> {
+  return (await getCatalogo()).tutte;
 }
 
 /** Una sagra è conclusa se l'ultimo giorno è ormai passato. */
@@ -191,8 +392,92 @@ export function eConclusa(s: Sagra, adesso: Date = new Date()): boolean {
   return fine < oggi;
 }
 
+/**
+ * L'edizione da mostrare in una scheda: quella in corso o la prossima;
+ * se sono tutte passate, l'ultima.
+ */
+function edizioneCorrente(edizioni: Sagra[], adesso: Date = new Date()): Sagra {
+  return edizioni.find((e) => !eConclusa(e, adesso)) ?? edizioni[edizioni.length - 1];
+}
+
+export type Scheda =
+  | { tipo: "scheda"; sagra: Sagra; edizioni: Sagra[] }
+  | { tipo: "redirect"; slug: string };
+
+/**
+ * Risolve l'URL di una scheda. Uno slug di scheda dà la sagra (nella sua
+ * edizione corrente) con tutte le edizioni; lo slug di un doppione o l'id
+ * numerico di un record danno lo slug della scheda verso cui fare 301.
+ */
+export async function getScheda(slug: string): Promise<Scheda | null> {
+  const { perScheda, alias, tutte } = await getCatalogo();
+
+  const edizioni = perScheda.get(slug);
+  if (edizioni) return { tipo: "scheda", sagra: edizioneCorrente(edizioni), edizioni };
+
+  const verso = alias.get(slug);
+  if (verso) return { tipo: "redirect", slug: verso };
+
+  if (/^\d+$/.test(slug)) {
+    const perId = tutte.find((s) => s.id === Number(slug));
+    if (perId) return { tipo: "redirect", slug: perId.slug };
+  }
+  return null;
+}
+
+/** La sagra (edizione corrente) di una scheda, seguendo alias e id. */
 export async function getSagraBySlug(slug: string): Promise<Sagra | undefined> {
-  return (await getSagreAbruzzo()).find((s) => s.slug === slug);
+  const risolta = await getScheda(slug);
+  if (!risolta) return undefined;
+  if (risolta.tipo === "scheda") return risolta.sagra;
+  const finale = await getScheda(risolta.slug);
+  return finale?.tipo === "scheda" ? finale.sagra : undefined;
+}
+
+/**
+ * Tutti i parametri che /sagra/[slug] deve pre-renderizzare: le schede, gli
+ * slug dei doppioni e gli id. Quelli che non sono schede fanno solo redirect,
+ * ma se non sono generati Next risponde 404 senza mai eseguire il redirect.
+ */
+export async function getTuttiGliSlugSagra(): Promise<string[]> {
+  const { perScheda, alias, tutte } = await getCatalogo();
+  return [
+    ...perScheda.keys(),
+    ...alias.keys(),
+    ...tutte.map((s) => String(s.id)),
+  ];
+}
+
+/** Le schede, per sitemap e immagini OG: uno slug ciascuna, con l'edizione corrente. */
+export async function getSchede(): Promise<Sagra[]> {
+  const { perScheda } = await getCatalogo();
+  return [...perScheda.values()].map((e) => edizioneCorrente(e));
+}
+
+// --- sagre vicine ---
+
+function distanzaKm(a: { lat: number; leng: number }, b: { lat: number; leng: number }): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.leng - a.leng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Le prossime sagre (non concluse) più vicine a quella data, esclusa la sua
+ * scheda. Sono il motivo per restare sul sito anche quando l'edizione che si
+ * cercava è già passata.
+ */
+export function sagreVicine(sagra: Sagra, sagre: Sagra[], quante = 6): (Sagra & { km: number })[] {
+  return sagre
+    // Solo con una data: "data da confermare" non aiuta chi cerca dove andare.
+    .filter((s) => s.slug !== sagra.slug && s.data_inizio && !eConclusa(s) && eMercatino(s) === eMercatino(sagra))
+    .map((s) => ({ ...s, km: distanzaKm(sagra, s) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, quante);
 }
 
 // --- raggruppamento per mese ---
@@ -472,8 +757,10 @@ export function eventJsonLd(s: Sagra, url: string) {
     },
     // Solo dati reali: la locandina quando c'è ed è di fonte affidabile.
     ...(immagine && { image: [immagine] }),
-    // Le sagre hanno ingresso libero: offerta gratuita, dato veritiero.
-    ...(!eMercatino(s) && { offers: {
+    // Le sagre hanno ingresso libero: offerta gratuita, dato veritiero. Ma
+    // solo finché l'edizione non è passata: "disponibile" su un evento
+    // concluso sarebbe falso.
+    ...(!eMercatino(s) && !eConclusa(s) && { offers: {
       "@type": "Offer",
       price: 0,
       priceCurrency: "EUR",
